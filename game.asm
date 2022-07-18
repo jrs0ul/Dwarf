@@ -28,7 +28,7 @@ Clear:
     lda #15     ; some gray color for the player
     sta COLUP0
 
-    lda #162
+    lda #100
     sta PLAYERY
 
 Main:
@@ -54,21 +54,26 @@ Kernel:
     lda #%01010101
     sta PF2
 
-    lda #%00000000
-    sta GRP0
+    lda #0
+    sta GRP0 ;let's clear the sprite
+
+    ldy #0
 
 loop:
     inx
     stx COLUBK      ;set X as the background color
 
-    cpx PLAYERY
-    bne nope
-    lda #%00011000
+    cpx PLAYERY     ;can we draw the player sprite?
+    bcs yep
+    jmp nope
+yep:
+    lda DWARF_GFX_0,y
     sta GRP0
+    iny
 nope:
     ;lets check if I can finish drawing player's sprite
     lda PLAYERY
-    adc #20         ;add + 20 to player Y
+    adc #8          ;add + 8 to player Y
     sta TEMPY       ;store the result
     cpx TEMPY       ;compare result with the scaneline number
     bne continue    ;nope, not yet, let's continue
@@ -117,13 +122,31 @@ VBlank:
     ; some game logics someday
     rts
 
+DWARF_GFX_0:
+    .byte %00110000
+    .byte %00100000
+    .byte %01110000
+    .byte %10111000
+    .byte %10110100
+    .byte %00110000
+    .byte %00101000
+    .byte %01000100
+    
+
+
+    ;------------------------------------------
+    ; free space check 
+    if (* & $FF)
+        echo "------", [$FFFA - *]d, "bytes free before End of Cartridge"
+        align 256
+    endif
     ;------------------------------------------------------------------------------
     ;       Interrupt vectors
 
-        ORG $FFFA
+    ORG $FFFA
 
-        .word Reset          ; NMI
-        .word Reset          ; RESET
-        .word Reset          ; IRQ
+    .word Reset          ; NMI
+    .word Reset          ; RESET
+    .word Reset          ; IRQ
 
     END
