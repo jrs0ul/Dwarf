@@ -63,8 +63,17 @@ loop:
     inx
     stx COLUBK      ;set X as the background color
 
+    jsr DrawPlayer
+
+    sta WSYNC       ;wait for the scanline to be drawn
+    cpx #192
+    bne loop
+
+    rts
+
+DrawPlayer:
     cpx PLAYERY     ;can we draw the player sprite?
-    bcs yep
+    bcs yep         ; >= PLAYERY ?
     jmp nope
 yep:
     lda DWARF_GFX_0,y
@@ -80,12 +89,8 @@ nope:
     lda #0          ;it's done
     sta GRP0
 continue:
-    cpx #192
-
-    sta WSYNC       ;wait for the scanline to be drawn
-    bne loop
-
     rts
+
 ;----------------------------
 Overscan:
     sta WSYNC
