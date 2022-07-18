@@ -9,7 +9,8 @@
 
 GAMEMAP ds 46 ; 13x7 map, one cell is 4bits
 PLAYERY ds 1  ; Player's Y possition
-TEMPY   ds 1  ; temp shit
+TEMPY   ds 1  ; player posY + height
+INPUT   ds 1  ; Input from the joystick
     ;----------------------------------
     ;           ROM
     SEG
@@ -57,6 +58,7 @@ Kernel:
     lda #0
     sta GRP0 ;let's clear the sprite
 
+
     ldy #0
 
 loop:
@@ -70,25 +72,22 @@ loop:
     bne loop
 
     rts
-
+;-----------------------------
 DrawPlayer:
     cpx PLAYERY     ;can we draw the player sprite?
     bcs yep         ; >= PLAYERY ?
     jmp nope
 yep:
+    cpy #8
+    bcs hide
     lda DWARF_GFX_0,y
     sta GRP0
     iny
-nope:
-    ;lets check if I can finish drawing player's sprite
-    lda PLAYERY
-    adc #8          ;add + 8 to player Y
-    sta TEMPY       ;store the result
-    cpx TEMPY       ;compare result with the scaneline number
-    bne continue    ;nope, not yet, let's continue
-    lda #0          ;it's done
+    jmp nope
+hide:
+    lda #0
     sta GRP0
-continue:
+nope:
     rts
 
 ;----------------------------
@@ -122,9 +121,46 @@ Vsync:
     sta WSYNC
     sta VSYNC
     rts
-
+;---------------------------
+ProcessInput:
+    lda SWCHA
+    asl         ;shift left, bit might fall into CARRY flag
+    sta INPUT
+    bcs checkLeft
+moveRight:
+    lda PLAYERY
+    adc 1
+    sta PLAYERY
+checkLeft:
+    lda INPUT
+    asl
+    ;sta INPUT
+    bcs checkDown
+moveLeft:
+    lda PLAYERY
+    sbc 1
+    sta PLAYERY
+checkDown:
+;    lda INPUT
+;    asl
+;    sta INPUT
+;    bcs checkUp
+;moveDown:
+;    lda PLAYERY
+;    adc 1
+;    sta PLAYERY
+;checkUp:
+;    lda INPUT
+;    asl
+;    bcs exit
+;    lda PLAYERY
+;    sbc 1
+;    sta PLAYERY
+;exit:
+    rts
+;-------------------------
 VBlank:
-    ; some game logics someday
+    jsr ProcessInput
     rts
 
 DWARF_GFX_0:
@@ -136,6 +172,7 @@ DWARF_GFX_0:
     .byte %00110000
     .byte %00101000
     .byte %01000100
+    .byte %00000000
     
 
 
