@@ -8,7 +8,8 @@
     ORG $80
 
 GAMEMAP ds 46 ; 13x7 map, one cell is 4bits
-PLAYERY ds 1  ; Player's Y possition
+PLAYERY ds 1  ; Player's Y position
+PLAYERX ds 1  ; Player's X position
 TEMPY   ds 1  ; player posY + height
 INPUT   ds 1  ; Input from the joystick
     ;----------------------------------
@@ -31,6 +32,8 @@ Clear:
 
     lda #100
     sta PLAYERY
+    lda #10
+    sta PLAYERX
 
 Main:
     jsr Vsync
@@ -121,6 +124,8 @@ Vsync:
     sta WSYNC
     sta VSYNC
     rts
+
+
 ;---------------------------
 ProcessInput:
     lda SWCHA
@@ -128,38 +133,67 @@ ProcessInput:
     sta INPUT
     bcs checkLeft
 moveRight:
-    lda PLAYERY
+    lda PLAYERX
     adc 1
-    sta PLAYERY
+    sta PLAYERX
 checkLeft:
     lda INPUT
     asl
-    ;sta INPUT
+    sta INPUT
     bcs checkDown
 moveLeft:
+    lda PLAYERX
+    sbc 1
+    sta PLAYERX
+
+checkDown:
+    lda INPUT
+    asl
+    sta INPUT
+    bcs checkUp
+moveDown:
+    lda PLAYERY
+    adc 1
+    sta PLAYERY
+checkUp:
+    lda INPUT
+    asl
+    bcs exit
     lda PLAYERY
     sbc 1
     sta PLAYERY
-checkDown:
-;    lda INPUT
-;    asl
-;    sta INPUT
-;    bcs checkUp
-;moveDown:
-;    lda PLAYERY
-;    adc 1
-;    sta PLAYERY
-;checkUp:
-;    lda INPUT
-;    asl
-;    bcs exit
-;    lda PLAYERY
-;    sbc 1
-;    sta PLAYERY
-;exit:
+exit:
     rts
+;--------------------------------------
+PosSpriteX: ;stole this from Adventure
+    ldy     #$02
+    sec
+@loop:
+    iny
+    sbc #$0f
+    bcs @loop
+    eor #$ff
+    sbc #$06
+    asl
+    asl 
+    asl
+    asl
+    sty WSYNC
+@loop1:
+    dey
+    bpl @loop1
+    sta RESP0,x
+    sta HMP0,x
+
+    rts  
+
 ;-------------------------
 VBlank:
+    lda PLAYERX
+    ldx #0
+    jsr PosSpriteX
+    sta WSYNC
+    sta HMOVE
     jsr ProcessInput
     rts
 
@@ -173,7 +207,6 @@ DWARF_GFX_0:
     .byte %00101000
     .byte %01000100
     .byte %00000000
-    
 
 
     ;------------------------------------------
