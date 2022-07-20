@@ -2,12 +2,15 @@
     include "vcs.h"
     include "macro.h"
 
+
+MAPSIZE = 46
+
     ;----------------------------------
     ;           RAM
     SEG.U VARS
     ORG $80
 
-GAMEMAP ds 46 ; 13x7 map, one cell is 4bits
+GAMEMAP ds MAPSIZE ; 13x7 map, one cell is 4bits
 PLAYERY ds 1  ; Player's Y position
 PLAYERX ds 1  ; Player's X position
 TEMPY   ds 1  ; player posY + height
@@ -35,6 +38,8 @@ Clear:
     lda #10
     sta PLAYERX
 
+    jsr GenerateMap
+
 Main:
     jsr Vsync
     jsr VBlank
@@ -51,11 +56,9 @@ Kernel:
 
     ldx #0
 
-    lda #%01010000
+    lda #%00000000
     sta PF0
-    lda #%10101010
     sta PF1
-    lda #%01010101
     sta PF2
 
     lda #0
@@ -63,34 +66,53 @@ Kernel:
 
 
     ldy #0
+    lda #$1C
+    sta COLUBK      ;set X as the background color
 
 loop:
     inx
-    stx COLUBK      ;set X as the background color
 
     jsr DrawPlayer
+    jsr DrawMap
 
     sta WSYNC       ;wait for the scanline to be drawn
     cpx #192
     bne loop
 
     rts
+;----------------------------
+DrawMap
+    cpx #MAPSIZE
+    bcs @skipthis
+
+    lda GAMEMAP,x
+    jmp @cont
+@skipthis:
+    lda #0
+@cont:
+    sta PF1
+    sta PF0
+    sta PF2
+
+
+    rts
+
 ;-----------------------------
 DrawPlayer:
     cpx PLAYERY     ;can we draw the player sprite?
-    bcs yep         ; >= PLAYERY ?
-    jmp nope
-yep:
+    bcs @yep         ; >= PLAYERY ?
+    jmp @nope
+@yep:
     cpy #8
-    bcs hide
+    bcs @hide
     lda DWARF_GFX_0,y
     sta GRP0
     iny
-    jmp nope
-hide:
+    jmp @nope
+@hide:
     lda #0
     sta GRP0
-nope:
+@nope:
     rts
 
 ;----------------------------
@@ -185,7 +207,19 @@ PosSpriteX: ;stole this from Adventure
     sta RESP0,x
     sta HMP0,x
 
-    rts  
+    rts
+;------------------------
+GenerateMap:
+    ldx #0
+    lda #%00000001
+@maploop:
+    sta GAMEMAP,x
+    inx
+    adc #%00000001
+    cpx #MAPSIZE
+    bne @maploop
+
+    rts
 
 ;-------------------------
 VBlank:
