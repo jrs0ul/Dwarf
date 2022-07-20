@@ -4,6 +4,7 @@
 
 
 MAPSIZE = 46
+PLAYERHEIGHT = 9
 
     ;----------------------------------
     ;           RAM
@@ -65,16 +66,14 @@ Kernel:
     sta GRP0 ;let's clear the sprite
 
 
-    ldy #0
     lda #$1C
     sta COLUBK      ;set X as the background color
+    ldy #PLAYERHEIGHT
 
 loop:
     inx
-
-    jsr DrawPlayer
     jsr DrawMap
-
+    jsr DrawPlayer
     sta WSYNC       ;wait for the scanline to be drawn
     cpx #192
     bne loop
@@ -100,18 +99,13 @@ DrawMap
 ;-----------------------------
 DrawPlayer:
     cpx PLAYERY     ;can we draw the player sprite?
-    bcs @yep         ; >= PLAYERY ?
-    jmp @nope
-@yep:
-    cpy #8
-    bcs @hide
+    bcc @nope       ; < PLAYERY
+    cpy #0          ;we already went through all sprite lines
+    beq @nope
+
     lda DWARF_GFX_0,y
     sta GRP0
-    iny
-    jmp @nope
-@hide:
-    lda #0
-    sta GRP0
+    dey
 @nope:
     rts
 
@@ -232,15 +226,16 @@ VBlank:
     rts
 
 DWARF_GFX_0:
-    .byte %00110000
-    .byte %00100000
-    .byte %01110000
-    .byte %10111000
-    .byte %10110100
-    .byte %00110000
-    .byte %00101000
-    .byte %01000100
     .byte %00000000
+    .byte %00000000
+    .byte %01000100
+    .byte %00101000
+    .byte %00110000
+    .byte %10110100
+    .byte %10111000
+    .byte %01110000
+    .byte %00100000
+    .byte %00110000
 
 
     ;------------------------------------------
