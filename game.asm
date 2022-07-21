@@ -73,7 +73,7 @@ Kernel:
 
 loop:
     jsr DrawMap
-    sta WSYNC
+    sta WSYNC       ;finish the scanline, we don't want to cram sprite drawing instructions to be here
     jsr DrawPlayer
     sta WSYNC       ;wait for the scanline to be drawn
     dex
@@ -82,26 +82,27 @@ loop:
     rts
 ;----------------------------
 DrawMap
-    txa
-    lsr
-    bcs @ex
-    lsr
-    bcs @ex
-    sty tempYindex
-    tay
+    txa                 ;2 2
+    lsr                 ;2 4
+    bcs @ex             ;2 6
+    lsr                 ;2 8
+    bcs @ex             ;2 10
+    sty tempYindex      ;3 13
+    tay                 ;2 15
 
-    lda GAMEMAP0,y
-    sta PF0
-    lda GAMEMAP1,y
-    sta PF1
-    lda GAMEMAP2,y
-    sta PF2
+    lda GAMEMAP0,y      ;4 19
+    sta PF0             ;3 21
+    lda GAMEMAP1,y      ;4 25
+    sta PF1             ;3 28
+    lda GAMEMAP2,y      ;4 32
+    sta PF2             ;3 35
 
-    jmp @cont
-@cont:
-    ldy tempYindex
+    jmp @cont           ;3 38
+@cont:                  
+    ldy tempYindex      ;3 41
 @ex
-    rts
+    rts                 ;6 47
+                        ;+6 jsr = 53
 
 ;-----------------------------
 DrawPlayer:
