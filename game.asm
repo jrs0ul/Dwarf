@@ -72,22 +72,13 @@ Kernel:
     ldy #PLAYERHEIGHT
 
 loop:
-    jsr DrawMap
-    sta WSYNC       ;finish the scanline, we don't want to cram sprite drawing instructions to be here
-    jsr DrawPlayer
-    sta WSYNC       ;wait for the scanline to be drawn
-    dex
-    bne loop
-
-    rts
-;----------------------------
-DrawMap
+    ;---------------DRAW MAP----------------------
     txa                 ;2 2
     lsr                 ;2 4
     bcs @ex             ;2 6
     lsr                 ;2 8
     bcs @ex             ;2 10
-    sty tempYindex      ;3 13
+    sty tempYindex      ;3 13   save Y
     tay                 ;2 15
 
     lda GAMEMAP0,y      ;4 19
@@ -96,14 +87,25 @@ DrawMap
     sta PF1             ;3 28
     lda GAMEMAP2,y      ;4 32
     sta PF2             ;3 35
+    
+    lda GAMEMAP3,y      ;4 39
+    sta PF2             ;3 42
+    lda GAMEMAP3,y      ;4 46
+    sta PF1             ;3 49
+    lda GAMEMAP3,y      ;4 53
+    sta PF0             ;3 58
 
-    jmp @cont           ;3 38
-@cont:                  
-    ldy tempYindex      ;3 41
-@ex
-    rts                 ;6 47
-                        ;+6 jsr = 53
+    ldy tempYindex      ;3 61  load Y back
+@ex:
+    ;---------------------------------------------
+    sta WSYNC       ;finish the scanline, we don't want to cram sprite drawing instructions to be here
+    ;---------------------------------------------
+    jsr DrawPlayer
+    sta WSYNC       ;wait for the scanline to be drawn
+    dex
+    bne loop
 
+    rts
 ;-----------------------------
 DrawPlayer:
     cpx PLAYERY     ;can we draw the player sprite?
@@ -389,6 +391,57 @@ GAMEMAP2:
     .byte %11111111
     .byte %11111111
     .byte %11111111
+
+
+GAMEMAP3:
+    .byte %00000000
+    .byte %11101110
+    .byte %11011111
+    .byte %11011111
+    .byte %11111011
+    .byte %11111111
+    .byte %11111111
+    .byte %11110111
+    .byte %11111111
+    .byte %11111111
+    .byte %11110100
+    .byte %10101010
+    .byte %01010101
+    .byte %10101010
+    .byte %01010101
+    .byte %10101010
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11101111
+    .byte %11111111
+    .byte %11011111
+    .byte %11000011
+    .byte %00000000
+    .byte %00000000
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+
+
 
 
 
