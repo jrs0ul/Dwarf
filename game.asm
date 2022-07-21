@@ -5,6 +5,7 @@
 
 MAPSIZE = 46
 PLAYERHEIGHT = 9
+LINESPERCELL = 7
 
     ;----------------------------------
     ;           RAM
@@ -12,11 +13,13 @@ PLAYERHEIGHT = 9
     ORG $80
 
 ;GAMEMAP ds MAPSIZE ; 13x7 map, one cell is 4bits
-PLAYERY ds 1  ; Player's Y position
-PLAYERX ds 1  ; Player's X position
-TEMPY   ds 1  ; player posY + height
-INPUT   ds 1  ; Input from the joystick
-tempYindex ds 1
+PLAYERY      ds 1  ; Player's Y position
+PLAYERX      ds 1  ; Player's X position
+TEMPY        ds 1  ; player posY + height
+INPUT        ds 1  ; Input from the joystick
+TEMP_X_INDEX ds 1
+SCREENMAP_IDX ds 1 ; index of the screenmap
+LINE_IDX ds 1      ; line counter for a map cell
     ;----------------------------------
     ;           ROM
     SEG
@@ -35,10 +38,13 @@ Clear:
     lda #15     ; some gray color for the player
     sta COLUP0
 
+    ;set player coordinates
     lda #100
     sta PLAYERY
     lda #10
     sta PLAYERX
+
+
 
     jsr GenerateMap
 
@@ -70,75 +76,75 @@ Kernel:
     sta COLUBK      ;set X as the background color
 
     lda #$1C
-    sta COLUPF
+    sta COLUPF      ;make playfield yellow
 
     ldy #PLAYERHEIGHT
 
-    ldx #60
+    lda #11
+    sta SCREENMAP_IDX ; bottom of the screenmap
 
-lopas:
-    sta WSYNC
-    dex
-    bne lopas
-    
+    lda #LINESPERCELL
+    sta LINE_IDX
 
-    ldx #12 ; scanlines, max scanlines / 2
-loop:
 
+    ldx #96 ; scanlines, max scanlines / 2
+
+@KERNEL_LOOP:
 
     jsr DrawPlayer
 
-    sta WSYNC       ;wait for the scanline to be drawn
+    sta WSYNC           ;wait for the scanline to be drawn
+
     ;---------------DRAW MAP----------------------
-    ;txa                 ;2 2
-    ;lsr                 ;2 4
-    ;bcs @ex             ;2 6
-    ;lsr                 ;2 8
-    ;bcs @ex             ;2 10
-    ;lsr                 ;2 12
-    ;bcs @ex             ;2 14
 
-    sty tempYindex      ;3 17   save Y
-    ;tay                 ;2 19
+    stx TEMP_X_INDEX    ;3 3    save scanline index
 
-    lda GAMEMAP0,x      ;4 4
-    sta PF0             ;3 7
+    ldx SCREENMAP_IDX   ;3 6
 
-    lda GAMEMAP1,x      ;4 11
-    sta PF1             ;3 14
+    lda GAMEMAP0,x      ;4 10
+    sta PF0             ;3 13
 
-    lda GAMEMAP2,x      ;4 18
-    sta PF2             ;3 21
+    lda GAMEMAP1,x      ;4 17
+    sta PF1             ;3 20
+
+    lda GAMEMAP2,x      ;4 24
+    sta PF2             ;3 27
 
 
-    lda GAMEMAP3,x      ;4 25
-    sta PF0             ;3 28
+    lda GAMEMAP3,x      ;4 31
+    sta PF0             ;3 34
 
-    nop
-    nop
+    nop                 ;2 36
+    nop                 ;2 38
     
-    lda GAMEMAP4,x      ;4 32
-    sta PF1             ;3 35
+    lda GAMEMAP4,x      ;4 42
+    sta PF1             ;3 45
     
-    nop
-    nop
+    nop                 ;2 47
+    nop                 ;2 49
 
-    lda GAMEMAP5,x      ;4 58
-    sta PF2             ;3 61
-
-
-    ldy tempYindex      ;3 64  load Y back
-@ex:
-    ;---------------------------------------------
-    sta WSYNC       ;finish the scanline, we don't want to cram sprite drawing instructions to be here
-    lda #0
-    sta PF0             ;3 7
-    sta PF1             ;3 14
-    sta PF2             ;3 21
+    lda GAMEMAP5,x      ;4 53
+    sta PF2             ;3 56
 
     ;---------------------------------------------
-    dex             ;
-    bne loop        ;
+    sta WSYNC           ;finish the scanline, we don't want to cram sprite drawing instructions to be here
+    lda #0              ; Lets turn off the playfield for one scanline
+    sta PF0             ;3 
+    sta PF1             ;3 
+    sta PF2             ;3 
+
+    ldx LINE_IDX        ;decrement current line count for one map cell
+    dex
+    bne @cont
+    dec SCREENMAP_IDX   ;5 move to next map cell
+    ldx #LINESPERCELL   ;reset line count
+@cont:
+    stx LINE_IDX        ;save current line count
+    ldx TEMP_X_INDEX    ;restore X (scanline index)
+
+    ;---------------------------------------------
+    dex              ;
+    bne @KERNEL_LOOP ;
 
     rts
 ;-----------------------------
@@ -284,11 +290,10 @@ DWARF_GFX_0:
     .byte %00110000
 
 GAMEMAP0:
-    .byte %00000000
-    .byte %11101110
-    .byte %11011111
-    .byte %11011111
-    .byte %11111011
+    .byte %00001110
+    .byte %00001111
+    .byte %00001111
+    .byte %00001011
     .byte %11111111
     .byte %11111111
     .byte %11101111
@@ -300,11 +305,10 @@ GAMEMAP0:
 
 
 GAMEMAP1:
-    .byte %01010101
-    .byte %11101110
-    .byte %11011111
-    .byte %11011111
-    .byte %11111011
+    .byte %00000100
+    .byte %00001110
+    .byte %00001010
+    .byte %00001010
     .byte %11111111
     .byte %11111111
     .byte %11110110
@@ -316,11 +320,10 @@ GAMEMAP1:
 
 
 GAMEMAP2:
-    .byte %00000000
-    .byte %11101110
-    .byte %11011111
-    .byte %11011111
-    .byte %11111011
+    .byte %01010101
+    .byte %00110111
+    .byte %01010101
+    .byte %00100010
     .byte %11111111
     .byte %11111111
     .byte %11110100
@@ -332,14 +335,13 @@ GAMEMAP2:
 
 
 GAMEMAP3:
-    .byte %01010101
     .byte %11101110
-    .byte %11011111
-    .byte %11011111
-    .byte %11111011
+    .byte %11001111
+    .byte %11001111
+    .byte %11101011
     .byte %11111111
     .byte %11111111
-    .byte %11110110
+    .byte %01110110
     .byte %01110101
     .byte %01110100
     .byte %10101101
@@ -347,7 +349,6 @@ GAMEMAP3:
     .byte %11111111
 
 GAMEMAP4:
-    .byte %00000000
     .byte %11101110
     .byte %11011101
     .byte %11011111
@@ -362,7 +363,6 @@ GAMEMAP4:
     .byte %11111111
 
 GAMEMAP5:
-    .byte %00000000
     .byte %11101110
     .byte %11011101
     .byte %11011111
