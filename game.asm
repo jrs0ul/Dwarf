@@ -3,24 +3,35 @@
     include "macro.h"
 
 
-MAPSIZE = 46
+MAPSIZE = 39
 PLAYERHEIGHT = 9
-LINESPERCELL = 7
+LINESPERCELL = 8
 
-    ;----------------------------------
+;----------------------------------
     ;           RAM
     SEG.U VARS
     ORG $80
 
-;GAMEMAP ds MAPSIZE ; 13x7 map, one cell is 4bits
-PLAYERY      ds 1  ; Player's Y position
-PLAYERX      ds 1  ; Player's X position
-TEMPY        ds 1  ; player posY + height
-INPUT        ds 1  ; Input from the joystick
-TEMP_X_INDEX ds 1
-SCREENMAP_IDX ds 1 ; index of the screenmap
-LINE_IDX ds 1      ; line counter for a map cell
-    ;----------------------------------
+
+THEMAP          ds MAPSIZE
+
+GAMEMAP0        ds 12 
+GAMEMAP1        ds 12 
+GAMEMAP2        ds 12 
+GAMEMAP3        ds 12 
+GAMEMAP4        ds 12
+GAMEMAP5        ds 12
+
+PLAYERY         ds 1  ; Player's Y position
+PLAYERX         ds 1  ; Player's X position
+TEMPY           ds 1  ; player posY + height
+INPUT           ds 1  ; Input from the joystick
+TEMP_X_INDEX    ds 1
+SCREENMAP_IDX   ds 1  ; index of the screenmap
+LINE_IDX        ds 1  ; line counter for a map cell
+;------------------------------------------------------
+;                  118 | 10 free
+;----------------------------------
     ;           ROM
     SEG
     ORG $F000 ;4K Rom , F8000 = 2K
@@ -44,9 +55,9 @@ Clear:
     lda #10
     sta PLAYERX
 
-
-
+    
     jsr GenerateMap
+
 
 Main:
     jsr Vsync
@@ -255,18 +266,88 @@ PosSpriteX: ;stole this from Adventure
 
     rts
 ;------------------------
-GenerateMap:
-;    ldx #0
-;    lda #%11101010
-;@maploop:
-;    sta GAMEMAP,x
-;    inx
-;    ;rol
-;    cpx #MAPSIZE
-;    bne @maploop
+FillScreenMap:
 
+    ldx #11
+@rep0:
+    lda ROM_GAMEMAP0,x
+    sta GAMEMAP0,x
+    dex
+    bne @rep0
+
+    lda ROM_GAMEMAP0,0
+    sta GAMEMAP0,0
+
+    ldx #11
+@rep1:
+    lda ROM_GAMEMAP1,x
+    sta GAMEMAP1,x
+    dex
+    bne @rep1
     
+    lda ROM_GAMEMAP1,0
+    sta GAMEMAP1,0
+
+    ldx #11
+@rep2:
+    lda ROM_GAMEMAP2,x
+    sta GAMEMAP2,x
+    dex
+    bne @rep2
+    
+    lda ROM_GAMEMAP2,0
+    sta GAMEMAP2,0
+
+    ldx #11
+@rep3:
+    lda ROM_GAMEMAP3,x
+    sta GAMEMAP3,x
+    dex
+    bne @rep3
+    
+    lda ROM_GAMEMAP3,0
+    sta GAMEMAP3,0
+
+    ldx #11
+@rep4:
+    lda ROM_GAMEMAP4,x
+    sta GAMEMAP4,x
+    dex
+    bne @rep4
+
+
+    lda ROM_GAMEMAP4,0
+    sta GAMEMAP4,0
+
+
+    ldx #11
+@rep5:
+    lda ROM_GAMEMAP5,x
+    sta GAMEMAP5,x
+    dex
+    bne @rep5
+    
+    lda ROM_GAMEMAP5,0
+    sta GAMEMAP5,0
+
     rts
+;--------------------------
+GenerateMap:
+    ldx #0
+@GenLoop:
+    inx
+    lda #%00010001
+    sta THEMAP,x
+    cpx #MAPSIZE
+    bne @GenLoop
+
+    lda #%00000000
+    sta THEMAP,0
+    sta THEMAP,1
+    sta THEMAP,2
+
+    rts
+
 
 ;-------------------------
 VBlank:
@@ -275,6 +356,7 @@ VBlank:
     jsr PosSpriteX
     sta WSYNC
     sta HMOVE
+    jsr FillScreenMap
     rts
 
 DWARF_GFX_0:
@@ -289,7 +371,7 @@ DWARF_GFX_0:
     .byte %00100000
     .byte %00110000
 
-GAMEMAP0:
+ROM_GAMEMAP0: ; only first four bits are legit
     .byte %00001110
     .byte %00001111
     .byte %00001111
@@ -304,7 +386,7 @@ GAMEMAP0:
     .byte %10111111
 
 
-GAMEMAP1:
+ROM_GAMEMAP1:
     .byte %00000100
     .byte %00001110
     .byte %00001010
@@ -319,7 +401,7 @@ GAMEMAP1:
     .byte %11011111
 
 
-GAMEMAP2:
+ROM_GAMEMAP2:
     .byte %01010101
     .byte %00110111
     .byte %01010101
@@ -334,7 +416,7 @@ GAMEMAP2:
     .byte %11111111
 
 
-GAMEMAP3:
+ROM_GAMEMAP3: ; only 4 first bits are legit
     .byte %11101110
     .byte %11001111
     .byte %11001111
@@ -348,7 +430,7 @@ GAMEMAP3:
     .byte %11011110
     .byte %11111111
 
-GAMEMAP4:
+ROM_GAMEMAP4:
     .byte %11101110
     .byte %11011101
     .byte %11011111
@@ -362,7 +444,7 @@ GAMEMAP4:
     .byte %11000101
     .byte %11111111
 
-GAMEMAP5:
+ROM_GAMEMAP5:
     .byte %11101110
     .byte %11011101
     .byte %11011111
