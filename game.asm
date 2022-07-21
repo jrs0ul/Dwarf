@@ -56,7 +56,6 @@ Kernel:
 
     sta VBLANK
 
-    ldx #96 ; scanlines, max scanlines / 2
 
     lda #%00000000
     sta PF0
@@ -67,52 +66,77 @@ Kernel:
     sta GRP0 ;let's clear the sprite
 
 
-    lda #$1C
+    lda #0
     sta COLUBK      ;set X as the background color
+
+    lda #$1C
+    sta COLUPF
+
     ldy #PLAYERHEIGHT
 
+    ldx #60
+
+lopas:
+    sta WSYNC
+    dex
+    bne lopas
+    
+
+    ldx #12 ; scanlines, max scanlines / 2
 loop:
+
+
+    jsr DrawPlayer
+
+    sta WSYNC       ;wait for the scanline to be drawn
     ;---------------DRAW MAP----------------------
-    txa                 ;2 2
-    lsr                 ;2 4
-    bcs @ex             ;2 6
-    lsr                 ;2 8
-    bcs @ex             ;2 10
-    lsr                 ;2 12
-    bcs @ex             ;2 14
+    ;txa                 ;2 2
+    ;lsr                 ;2 4
+    ;bcs @ex             ;2 6
+    ;lsr                 ;2 8
+    ;bcs @ex             ;2 10
+    ;lsr                 ;2 12
+    ;bcs @ex             ;2 14
 
     sty tempYindex      ;3 17   save Y
-    tay                 ;2 19
+    ;tay                 ;2 19
+
+    lda GAMEMAP0,x      ;4 4
+    sta PF0             ;3 7
+
+    lda GAMEMAP1,x      ;4 11
+    sta PF1             ;3 14
+
+    lda GAMEMAP2,x      ;4 18
+    sta PF2             ;3 21
 
 
-    lda GAMEMAP1,y      ;4 23
-    sta PF1             ;3 26
+    lda GAMEMAP3,x      ;4 25
+    sta PF0             ;3 28
 
-    lda GAMEMAP3,y      ;4 30
-    sta PF0             ;3 33
-
-    lda GAMEMAP2,y      ;4 37
-    sta PF2             ;3 40
-
-    lda GAMEMAP5,y      ;4 44
-    sta PF1             ;3 47
+    nop
+    nop
     
-    nop                 ;2 49
+    lda GAMEMAP4,x      ;4 32
+    sta PF1             ;3 35
+    
+    nop
+    nop
 
-    lda GAMEMAP4,y      ;4 54
-    sta PF2             ;3 57
+    lda GAMEMAP5,x      ;4 58
+    sta PF2             ;3 61
 
 
-    lda GAMEMAP0,y      ;4 61
-    sta PF0             ;3 64
-
-    ldy tempYindex      ;3 67  load Y back
+    ldy tempYindex      ;3 64  load Y back
 @ex:
     ;---------------------------------------------
     sta WSYNC       ;finish the scanline, we don't want to cram sprite drawing instructions to be here
+    lda #0
+    sta PF0             ;3 7
+    sta PF1             ;3 14
+    sta PF2             ;3 21
+
     ;---------------------------------------------
-    jsr DrawPlayer
-    sta WSYNC       ;wait for the scanline to be drawn
     dex             ;
     bne loop        ;
 
@@ -303,57 +327,54 @@ GAMEMAP2:
     .byte %01110111
     .byte %01110100
     .byte %10101111
-    .byte %10101100
-    .byte %11011111
+    .byte %11011100
+    .byte %11111111
 
 
 GAMEMAP3:
-    .byte %00000000
+    .byte %01010101
     .byte %11101110
     .byte %11011111
     .byte %11011111
     .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11110100
-    .byte %10101010
-    .byte %01010101
-    .byte %10101010
-    .byte %01010101
-    .byte %10101010
+    .byte %11110110
+    .byte %01110101
+    .byte %01110100
+    .byte %10101101
+    .byte %11011110
+    .byte %11111111
 
 GAMEMAP4:
     .byte %00000000
     .byte %11101110
-    .byte %11011111
+    .byte %11011101
     .byte %11011111
     .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11110100
-    .byte %10101010
-    .byte %01010101
-    .byte %10101010
-    .byte %01010101
-    .byte %10101010
+    .byte %11000100
+    .byte %10111101
+    .byte %10001101
+    .byte %10111101
+    .byte %11000101
+    .byte %11111111
 
 GAMEMAP5:
     .byte %00000000
     .byte %11101110
-    .byte %11011111
+    .byte %11011101
     .byte %11011111
     .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11110100
-    .byte %10101010
-    .byte %01010101
-    .byte %10101010
-    .byte %01010101
-
-
-
-
+    .byte %11110000
+    .byte %11110111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
 
 
 
