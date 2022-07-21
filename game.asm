@@ -56,7 +56,7 @@ Kernel:
 
     sta VBLANK
 
-    ldx #191
+    ldx #96
 
     lda #%00000000
     sta PF0
@@ -73,6 +73,7 @@ Kernel:
 
 loop:
     jsr DrawMap
+    sta WSYNC
     jsr DrawPlayer
     sta WSYNC       ;wait for the scanline to be drawn
     dex
@@ -86,16 +87,14 @@ DrawMap
     bcs @ex
     lsr
     bcs @ex
-    lsr
-    bcs @ex
     sty tempYindex
     tay
 
-    lda GAMEMAP,y
-    sta PF1
-    lda GAMEMAP,y+1
+    lda GAMEMAP0,y
     sta PF0
-    lda GAMEMAP,y+2
+    lda GAMEMAP1,y
+    sta PF1
+    lda GAMEMAP2,y
     sta PF2
 
     jmp @cont
@@ -106,9 +105,6 @@ DrawMap
 
 ;-----------------------------
 DrawPlayer:
-    txa
-    lsr
-    bcs @nope
     cpx PLAYERY     ;can we draw the player sprite?
     bcs @nope       ; < PLAYERY
     cpy #0          ;we already went through all sprite lines
@@ -180,14 +176,14 @@ checkDown:
     bcs checkUp
 moveDown:
     lda PLAYERY
-    adc 1
+    sbc 1
     sta PLAYERY
 checkUp:
     lda INPUT
     asl
     bcs exit
     lda PLAYERY
-    sbc 1
+    adc 1
     sta PLAYERY
 exit:
     rts
@@ -249,7 +245,7 @@ DWARF_GFX_0:
     .byte %00100000
     .byte %00110000
 
-GAMEMAP:
+GAMEMAP0:
     .byte %00000000
     .byte %11101110
     .byte %11011111
@@ -259,18 +255,18 @@ GAMEMAP:
     .byte %11111111
     .byte %11110111
     .byte %11111111
+    .byte %11111111
+    .byte %11101111
+    .byte %11101111
+    .byte %11101111
+    .byte %01011111
+    .byte %01011111
     .byte %10111111
     .byte %11111111
     .byte %11111111
-    .byte %11111011
-    .byte %11111110
-    .byte %11111111
-    .byte %11101111
     .byte %11111111
     .byte %11111111
-    .byte %11011111
     .byte %11111111
-    .byte %11101111
     .byte %11111111
     .byte %11101111
     .byte %11111111
@@ -296,6 +292,104 @@ GAMEMAP:
     .byte %11111111
     .byte %11111111
     .byte %11111111
+
+GAMEMAP1:
+    .byte %00000000
+    .byte %11101110
+    .byte %11011111
+    .byte %11011111
+    .byte %11111011
+    .byte %11111111
+    .byte %11111111
+    .byte %11110111
+    .byte %11111111
+    .byte %11111111
+    .byte %11110110
+    .byte %01110101
+    .byte %01110100
+    .byte %10101101
+    .byte %10101110
+    .byte %11011111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11101111
+    .byte %11111111
+    .byte %11011111
+    .byte %11000011
+    .byte %00000000
+    .byte %00000000
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+
+GAMEMAP2:
+    .byte %00000000
+    .byte %11101110
+    .byte %11011111
+    .byte %11011111
+    .byte %11111011
+    .byte %11111111
+    .byte %11111111
+    .byte %11110111
+    .byte %11111111
+    .byte %11111111
+    .byte %11110100
+    .byte %01110111
+    .byte %01110100
+    .byte %10101111
+    .byte %10101100
+    .byte %11011111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11101111
+    .byte %11111111
+    .byte %11011111
+    .byte %11000011
+    .byte %00000000
+    .byte %00000000
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+
+
 
 
     ;------------------------------------------
