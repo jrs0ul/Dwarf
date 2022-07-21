@@ -56,7 +56,7 @@ Kernel:
 
     sta VBLANK
 
-    ldx #96
+    ldx #96 ; scanlines, max scanlines / 2
 
     lda #%00000000
     sta PF0
@@ -78,32 +78,43 @@ loop:
     bcs @ex             ;2 6
     lsr                 ;2 8
     bcs @ex             ;2 10
-    sty tempYindex      ;3 13   save Y
-    tay                 ;2 15
+    lsr                 ;2 12
+    bcs @ex             ;2 14
 
-    lda GAMEMAP0,y      ;4 19
-    sta PF0             ;3 21
-    lda GAMEMAP1,y      ;4 25
-    sta PF1             ;3 28
-    lda GAMEMAP2,y      ;4 32
-    sta PF2             ;3 35
+    sty tempYindex      ;3 17   save Y
+    tay                 ;2 19
+
+
+    lda GAMEMAP1,y      ;4 23
+    sta PF1             ;3 26
+
+    lda GAMEMAP3,y      ;4 30
+    sta PF0             ;3 33
+
+    lda GAMEMAP2,y      ;4 37
+    sta PF2             ;3 40
+
+    lda GAMEMAP5,y      ;4 44
+    sta PF1             ;3 47
     
-    lda GAMEMAP3,y      ;4 39
-    sta PF2             ;3 42
-    lda GAMEMAP3,y      ;4 46
-    sta PF1             ;3 49
-    lda GAMEMAP3,y      ;4 53
-    sta PF0             ;3 58
+    nop                 ;2 49
 
-    ldy tempYindex      ;3 61  load Y back
+    lda GAMEMAP4,y      ;4 54
+    sta PF2             ;3 57
+
+
+    lda GAMEMAP0,y      ;4 61
+    sta PF0             ;3 64
+
+    ldy tempYindex      ;3 67  load Y back
 @ex:
     ;---------------------------------------------
     sta WSYNC       ;finish the scanline, we don't want to cram sprite drawing instructions to be here
     ;---------------------------------------------
     jsr DrawPlayer
     sta WSYNC       ;wait for the scanline to be drawn
-    dex
-    bne loop
+    dex             ;
+    bne loop        ;
 
     rts
 ;-----------------------------
@@ -127,7 +138,8 @@ Overscan:
     lda #35
     sta TIM64T
 
-    ;I might want to place some game logic here
+    ;some game logic here
+    jsr ProcessInput
 
 OverscanLoop:
     sta WSYNC
@@ -233,7 +245,6 @@ VBlank:
     jsr PosSpriteX
     sta WSYNC
     sta HMOVE
-    jsr ProcessInput
     rts
 
 DWARF_GFX_0:
@@ -256,55 +267,20 @@ GAMEMAP0:
     .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11110111
-    .byte %11111111
-    .byte %11111111
     .byte %11101111
     .byte %11101111
     .byte %11101111
     .byte %01011111
     .byte %01011111
     .byte %10111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11101111
-    .byte %11111111
-    .byte %11011111
-    .byte %11000011
-    .byte %00000000
-    .byte %00000000
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
+
 
 GAMEMAP1:
-    .byte %00000000
+    .byte %01010101
     .byte %11101110
     .byte %11011111
     .byte %11011111
     .byte %11111011
-    .byte %11111111
-    .byte %11111111
-    .byte %11110111
     .byte %11111111
     .byte %11111111
     .byte %11110110
@@ -313,36 +289,7 @@ GAMEMAP1:
     .byte %10101101
     .byte %10101110
     .byte %11011111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11101111
-    .byte %11111111
-    .byte %11011111
-    .byte %11000011
-    .byte %00000000
-    .byte %00000000
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
+
 
 GAMEMAP2:
     .byte %00000000
@@ -352,45 +299,12 @@ GAMEMAP2:
     .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11110111
-    .byte %11111111
-    .byte %11111111
     .byte %11110100
     .byte %01110111
     .byte %01110100
     .byte %10101111
     .byte %10101100
     .byte %11011111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11101111
-    .byte %11111111
-    .byte %11011111
-    .byte %11000011
-    .byte %00000000
-    .byte %00000000
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
 
 
 GAMEMAP3:
@@ -401,7 +315,19 @@ GAMEMAP3:
     .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11110111
+    .byte %11110100
+    .byte %10101010
+    .byte %01010101
+    .byte %10101010
+    .byte %01010101
+    .byte %10101010
+
+GAMEMAP4:
+    .byte %00000000
+    .byte %11101110
+    .byte %11011111
+    .byte %11011111
+    .byte %11111011
     .byte %11111111
     .byte %11111111
     .byte %11110100
@@ -410,36 +336,21 @@ GAMEMAP3:
     .byte %10101010
     .byte %01010101
     .byte %10101010
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11101111
-    .byte %11111111
+
+GAMEMAP5:
+    .byte %00000000
+    .byte %11101110
     .byte %11011111
-    .byte %11000011
-    .byte %00000000
-    .byte %00000000
+    .byte %11011111
+    .byte %11111011
     .byte %11111111
     .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
+    .byte %11110100
+    .byte %10101010
+    .byte %01010101
+    .byte %10101010
+    .byte %01010101
+
 
 
 
