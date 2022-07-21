@@ -11,11 +11,12 @@ PLAYERHEIGHT = 9
     SEG.U VARS
     ORG $80
 
-GAMEMAP ds MAPSIZE ; 13x7 map, one cell is 4bits
+;GAMEMAP ds MAPSIZE ; 13x7 map, one cell is 4bits
 PLAYERY ds 1  ; Player's Y position
 PLAYERX ds 1  ; Player's X position
 TEMPY   ds 1  ; player posY + height
 INPUT   ds 1  ; Input from the joystick
+tempYindex ds 1
     ;----------------------------------
     ;           ROM
     SEG
@@ -55,7 +56,7 @@ Kernel:
 
     sta VBLANK
 
-    ldx #0
+    ldx #191
 
     lda #%00000000
     sta PF0
@@ -71,35 +72,45 @@ Kernel:
     ldy #PLAYERHEIGHT
 
 loop:
-    inx
     jsr DrawMap
     jsr DrawPlayer
     sta WSYNC       ;wait for the scanline to be drawn
-    cpx #192
+    dex
     bne loop
 
     rts
 ;----------------------------
 DrawMap
-    cpx #MAPSIZE
-    bcs @skipthis
+    txa
+    lsr
+    bcs @ex
+    lsr
+    bcs @ex
+    lsr
+    bcs @ex
+    sty tempYindex
+    tay
 
-    lda GAMEMAP,x
-    jmp @cont
-@skipthis:
-    lda #0
-@cont:
+    lda GAMEMAP,y
     sta PF1
+    lda GAMEMAP,y+1
     sta PF0
+    lda GAMEMAP,y+2
     sta PF2
 
-
+    jmp @cont
+@cont:
+    ldy tempYindex
+@ex
     rts
 
 ;-----------------------------
 DrawPlayer:
+    txa
+    lsr
+    bcs @nope
     cpx PLAYERY     ;can we draw the player sprite?
-    bcc @nope       ; < PLAYERY
+    bcs @nope       ; < PLAYERY
     cpy #0          ;we already went through all sprite lines
     beq @nope
 
@@ -204,15 +215,16 @@ PosSpriteX: ;stole this from Adventure
     rts
 ;------------------------
 GenerateMap:
-    ldx #0
-    lda #%00000001
-@maploop:
-    sta GAMEMAP,x
-    inx
-    adc #%00000001
-    cpx #MAPSIZE
-    bne @maploop
+;    ldx #0
+;    lda #%11101010
+;@maploop:
+;    sta GAMEMAP,x
+;    inx
+;    ;rol
+;    cpx #MAPSIZE
+;    bne @maploop
 
+    
     rts
 
 ;-------------------------
@@ -236,6 +248,54 @@ DWARF_GFX_0:
     .byte %01110000
     .byte %00100000
     .byte %00110000
+
+GAMEMAP:
+    .byte %00000000
+    .byte %11101110
+    .byte %11011111
+    .byte %11011111
+    .byte %11111011
+    .byte %11111111
+    .byte %11111111
+    .byte %11110111
+    .byte %11111111
+    .byte %10111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111011
+    .byte %11111110
+    .byte %11111111
+    .byte %11101111
+    .byte %11111111
+    .byte %11111111
+    .byte %11011111
+    .byte %11111111
+    .byte %11101111
+    .byte %11111111
+    .byte %11101111
+    .byte %11111111
+    .byte %11011111
+    .byte %11000011
+    .byte %00000000
+    .byte %00000000
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
 
 
     ;------------------------------------------
