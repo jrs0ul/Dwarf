@@ -268,14 +268,14 @@ PosSpriteX: ;stole this from Adventure
     sta HMP0,x
 
     rts
+
 ;--------------------------------------------------------------
-FillScreenMap:
+cell_0_1: 
 
-    ldx #0
-    stx TMPSCREENCELL
-    stx TMPSCREENCELL1
-
-cell_0_1_y0: ;--------------------
+    
+    lda #%00000000
+    sta TMPSCREENCELL
+    sta TMPSCREENCELL1
 
     lda THEMAP,x
     eor #%00010000
@@ -289,7 +289,7 @@ nextseg0:
     lda THEMAP,x
     eor #%00000001
     and #%00001111
-    bne store_0_1_y0
+    bne store_0_1
     ;
     lda TMPSCREENCELL
     eor #%10000000
@@ -297,23 +297,24 @@ nextseg0:
     lda #%11000000       ;this goes to PF1
     sta TMPSCREENCELL1
 
-store_0_1_y0:
+store_0_1:
 
     lda TMPSCREENCELL
-    ldy #11
     sta GAMEMAP0,y
-    ldy #10
+    dey
     sta GAMEMAP0,y
     
     lda TMPSCREENCELL1
     sta GAMEMAP1,y
-    ldy #11
+    iny
     sta GAMEMAP1,y
 
-
-cell_2_3_y0: ;--------------------
+    rts
+;--------------------------------------------------------------
+cell_2_3: 
 
     inx
+
     lda THEMAP,x
     eor #%00010000
     and #%11110000
@@ -328,24 +329,29 @@ nextseg1:
     lda THEMAP,x
     eor #%00000001
     and #%00001111
-    bne store_2_3_y0
+    bne store_2_3
     ;
     lda TMPSCREENCELL1
     eor #%00000111
     sta TMPSCREENCELL1
 
-    
 
-store_2_3_y0:
+store_2_3:
 
     lda TMPSCREENCELL1
-    sta GAMEMAP1,y  ; y = 11
-    ldy #10
+    sta GAMEMAP1,y  ; 
+    dey
     sta GAMEMAP1,y
 
+    rts
+
+;--------------------------------------------------------------
 cell_4_5: ;------------------------
     
     inx
+
+    lda #%00000000
+    sta TMPSCREENCELL
 
     lda THEMAP,x
     eor #%00010000
@@ -360,7 +366,7 @@ nextseg2:
     lda THEMAP,x
     eor #%00000001
     and #%00001111
-    bne store_4_5_y0
+    bne store_4_5
     ;
     lda TMPSCREENCELL
     eor #%00111000
@@ -368,18 +374,21 @@ nextseg2:
 
     
 
-store_4_5_y0:
+store_4_5:
 
     lda TMPSCREENCELL
-    sta GAMEMAP2,y  ; y = 10
-    ldy #11
     sta GAMEMAP2,y
-
-
-
+    iny
+    sta GAMEMAP2,y
+    
+    rts
+;--------------------------------------------------------------
 cell_6_7: ;------------------------
 
     inx
+
+    lda #%00000000
+    sta TMPSCREENCELL1
 
     lda THEMAP,x
     eor #%00010000
@@ -397,28 +406,33 @@ nextseg3:
     lda THEMAP,x
     eor #%00000001
     and #%00001111
-    bne store_6_7_y0
+    bne store_6_7
     ;
     lda TMPSCREENCELL1
     eor #%11100000
     sta TMPSCREENCELL1
 
 
-store_6_7_y0:
+store_6_7:
 
     lda TMPSCREENCELL
-    sta GAMEMAP2,y  ; y = 11
-    ldy #10
+    sta GAMEMAP2,y  
+    dey
     sta GAMEMAP2,y
+
     lda TMPSCREENCELL1
     sta GAMEMAP3,y
-    ldy #11
+    iny
     sta GAMEMAP3,y
 
-
+    rts
+;--------------------------------------------------------------
 cell_8_9: ;------------------------
 
     inx
+
+    lda #%00000000
+    sta TMPSCREENCELL
 
     lda THEMAP,x
     eor #%00010000
@@ -433,25 +447,31 @@ nextseg4:
     lda THEMAP,x
     eor #%00000001
     and #%00001111
-    bne store_8_9_y0
+    bne store_8_9
     ;
     lda TMPSCREENCELL
     eor #%00011100
     sta TMPSCREENCELL
 
-    
 
-store_8_9_y0:
+store_8_9:
 
     lda TMPSCREENCELL
     sta GAMEMAP4,y  ; y = 11
-    ldy #10
+    dey
     sta GAMEMAP4,y
 
+    rts
 
+;--------------------------------------------------------------
 cell_10_11: ;----------------------
 
     inx
+    lda #%00000000
+    sta TMPSCREENCELL1
+
+
+
     lda THEMAP,x
     eor #%00010000
     and #%11110000
@@ -480,16 +500,40 @@ store_10_11_y0:
 
     lda TMPSCREENCELL
     sta GAMEMAP4,y  ; y = 10
-    ldy #11
+    iny
     sta GAMEMAP4,y
     lda TMPSCREENCELL1
     sta GAMEMAP5,y
-    ldy #10
+    dey
     sta GAMEMAP5,y
 
+    rts
 
 
-    
+;--------------------------------------------------------------
+FillScreenMap:
+
+    ldx #0
+    stx TMPSCREENCELL
+    stx TMPSCREENCELL1
+    ldy #11
+    ;sta TMPMAPROWIDX
+
+@rowloop:
+
+    jsr cell_0_1
+    jsr cell_2_3
+    jsr cell_4_5
+    jsr cell_6_7
+    jsr cell_8_9
+    jsr cell_10_11
+
+    inx
+    dey
+    cpy #255
+    bne @rowloop
+
+
 
 ;    ldx #11
 ;@rep0:
@@ -564,11 +608,48 @@ GenerateMap:
     cpx #MAPSIZE
     bne @GenLoop
 
-    ;lda #%00000001
-    ;ldy #0
-    ;sta THEMAP,y
-    ;ldy #1
-    ;sta THEMAP,y
+    lda #%00000001
+    ldy #6
+    sta THEMAP,y
+    ldy #7
+    sta THEMAP,y
+    ldy #8
+    sta THEMAP,y
+    ldy #9
+    sta THEMAP,y
+    ldy #10
+    sta THEMAP,y
+    ldy #11
+    sta THEMAP,y
+
+    ldy #18
+    sta THEMAP,y
+    ldy #19
+    sta THEMAP,y
+    ldy #20
+    sta THEMAP,y
+    ldy #21
+    sta THEMAP,y
+    ldy #22
+    sta THEMAP,y
+    ldy #23
+    sta THEMAP,y
+
+    ldy #30
+    sta THEMAP,y
+    ldy #31
+    sta THEMAP,y
+    ldy #32
+    sta THEMAP,y
+    ldy #33
+    sta THEMAP,y
+    ldy #34
+    sta THEMAP,y
+    ldy #35
+    sta THEMAP,y
+
+
+
 
 
 
