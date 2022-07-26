@@ -3,7 +3,7 @@
     include "macro.h"
 
 
-MAPSIZE = 39
+MAPSIZE = 36        ;(12 * 6) / 2
 PLAYERHEIGHT = 9
 LINESPERCELL = 8
 
@@ -29,8 +29,11 @@ INPUT           ds 1  ; Input from the joystick
 TEMP_X_INDEX    ds 1
 SCREENMAP_IDX   ds 1  ; index of the screenmap
 LINE_IDX        ds 1  ; line counter for a map cell
+
+TMPSCREENCELL   ds 1
+TMPSCREENCELL1  ds 1
 ;------------------------------------------------------
-;                  118 | 10 free
+;                  117 | 11 free
 ;----------------------------------
     ;           ROM
     SEG
@@ -265,86 +268,309 @@ PosSpriteX: ;stole this from Adventure
     sta HMP0,x
 
     rts
-;------------------------
+;--------------------------------------------------------------
 FillScreenMap:
 
-    ldx #11
-@rep0:
-    lda ROM_GAMEMAP0,x
-    sta GAMEMAP0,x
-    dex
-    bne @rep0
+    ldx #0
+    stx TMPSCREENCELL
+    stx TMPSCREENCELL1
 
-    lda ROM_GAMEMAP0,0
-    sta GAMEMAP0,0
+cell_0_1_y0: ;--------------------
 
-    ldx #11
-@rep1:
-    lda ROM_GAMEMAP1,x
-    sta GAMEMAP1,x
-    dex
-    bne @rep1
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    bne nextseg0
+
+    lda #%01110000
+    sta TMPSCREENCELL
+
+nextseg0:
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    bne store_0_1_y0
+    ;
+    lda TMPSCREENCELL
+    eor #%10000000
+    sta TMPSCREENCELL
+    lda #%11000000       ;this goes to PF1
+    sta TMPSCREENCELL1
+
+store_0_1_y0:
+
+    lda TMPSCREENCELL
+    ldy #11
+    sta GAMEMAP0,y
+    ldy #10
+    sta GAMEMAP0,y
     
-    lda ROM_GAMEMAP1,0
-    sta GAMEMAP1,0
+    lda TMPSCREENCELL1
+    sta GAMEMAP1,y
+    ldy #11
+    sta GAMEMAP1,y
 
-    ldx #11
-@rep2:
-    lda ROM_GAMEMAP2,x
-    sta GAMEMAP2,x
-    dex
-    bne @rep2
+
+cell_2_3_y0: ;--------------------
+
+    inx
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    bne nextseg1
+
+    lda TMPSCREENCELL1
+    eor #%00111000
+    sta TMPSCREENCELL1
+
+nextseg1:
+
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    bne store_2_3_y0
+    ;
+    lda TMPSCREENCELL1
+    eor #%00000111
+    sta TMPSCREENCELL1
+
     
-    lda ROM_GAMEMAP2,0
-    sta GAMEMAP2,0
 
-    ldx #11
-@rep3:
-    lda ROM_GAMEMAP3,x
-    sta GAMEMAP3,x
-    dex
-    bne @rep3
+store_2_3_y0:
+
+    lda TMPSCREENCELL1
+    sta GAMEMAP1,y  ; y = 11
+    ldy #10
+    sta GAMEMAP1,y
+
+cell_4_5: ;------------------------
     
-    lda ROM_GAMEMAP3,0
-    sta GAMEMAP3,0
+    inx
 
-    ldx #11
-@rep4:
-    lda ROM_GAMEMAP4,x
-    sta GAMEMAP4,x
-    dex
-    bne @rep4
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    bne nextseg2
 
+    lda #%00000111
+    sta TMPSCREENCELL
 
-    lda ROM_GAMEMAP4,0
-    sta GAMEMAP4,0
+nextseg2:
 
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    bne store_4_5_y0
+    ;
+    lda TMPSCREENCELL
+    eor #%00111000
+    sta TMPSCREENCELL
 
-    ldx #11
-@rep5:
-    lda ROM_GAMEMAP5,x
-    sta GAMEMAP5,x
-    dex
-    bne @rep5
     
-    lda ROM_GAMEMAP5,0
-    sta GAMEMAP5,0
+
+store_4_5_y0:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP2,y  ; y = 10
+    ldy #11
+    sta GAMEMAP2,y
+
+
+
+cell_6_7: ;------------------------
+
+    inx
+
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    bne nextseg3
+
+    lda TMPSCREENCELL
+    eor #%11000000
+    sta TMPSCREENCELL
+    lda #%00010000
+    sta TMPSCREENCELL1
+
+nextseg3:
+
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    bne store_6_7_y0
+    ;
+    lda TMPSCREENCELL1
+    eor #%11100000
+    sta TMPSCREENCELL1
+
+
+store_6_7_y0:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP2,y  ; y = 11
+    ldy #10
+    sta GAMEMAP2,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP3,y
+    ldy #11
+    sta GAMEMAP3,y
+
+
+cell_8_9: ;------------------------
+
+    inx
+
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    bne nextseg4
+
+    lda #%11100000
+    sta TMPSCREENCELL
+
+nextseg4:
+
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    bne store_8_9_y0
+    ;
+    lda TMPSCREENCELL
+    eor #%00011100
+    sta TMPSCREENCELL
+
+    
+
+store_8_9_y0:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP4,y  ; y = 11
+    ldy #10
+    sta GAMEMAP4,y
+
+
+cell_10_11: ;----------------------
+
+    inx
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    bne nextseg5
+
+    lda TMPSCREENCELL
+    eor #%00000011
+    sta TMPSCREENCELL
+    lda #%00000001
+    sta TMPSCREENCELL1
+
+nextseg5:
+
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    bne store_10_11_y0
+    ;
+    lda TMPSCREENCELL1
+    eor #%00001110
+    sta TMPSCREENCELL1
+
+    
+
+store_10_11_y0:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP4,y  ; y = 10
+    ldy #11
+    sta GAMEMAP4,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP5,y
+    ldy #10
+    sta GAMEMAP5,y
+
+
+
+    
+
+;    ldx #11
+;@rep0:
+;    lda ROM_GAMEMAP0,x
+;    sta GAMEMAP0,x
+;    dex
+;    bne @rep0
+;
+;    lda ROM_GAMEMAP0,0
+;    sta GAMEMAP0,0
+;
+;    ldx #11
+;@rep1:
+;    lda ROM_GAMEMAP1,x
+;    sta GAMEMAP1,x
+;    dex
+;    bne @rep1
+;    
+;    lda ROM_GAMEMAP1,0
+;    sta GAMEMAP1,0
+
+;    ldx #11
+;@rep2:
+;    lda ROM_GAMEMAP2,x
+;    sta GAMEMAP2,x
+;    dex
+;    bne @rep2
+    
+;    lda ROM_GAMEMAP2,0
+;    sta GAMEMAP2,0
+
+;    ldx #11
+;@rep3:
+;    lda ROM_GAMEMAP3,x
+;    sta GAMEMAP3,x
+;    dex
+;    bne @rep3
+    
+;    lda ROM_GAMEMAP3,0
+;    sta GAMEMAP3,0
+
+;    ldx #11
+;@rep4:
+;    lda ROM_GAMEMAP4,x
+;    sta GAMEMAP4,x
+;    dex
+;    bne @rep4
+
+
+;    lda ROM_GAMEMAP4,0
+;    sta GAMEMAP4,0
+
+
+;    ldx #11
+;@rep5:
+;    lda ROM_GAMEMAP5,x
+;    sta GAMEMAP5,x
+;    dex
+;    bne @rep5
+    
+;    lda ROM_GAMEMAP5,0
+;    sta GAMEMAP5,0
 
     rts
 ;--------------------------
 GenerateMap:
     ldx #0
 @GenLoop:
-    inx
-    lda #%00010001
+    lda #%00010000
     sta THEMAP,x
+    inx
     cpx #MAPSIZE
     bne @GenLoop
 
-    lda #%00000000
-    sta THEMAP,0
-    sta THEMAP,1
-    sta THEMAP,2
+    ;lda #%00000001
+    ;ldy #0
+    ;sta THEMAP,y
+    ;ldy #1
+    ;sta THEMAP,y
+
+
 
     rts
 
