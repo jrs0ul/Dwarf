@@ -226,6 +226,8 @@ moveRight:
     cmp #140
     bcs checkLeft
     sta PLAYERX
+    lda #%00000000
+    sta REFP0
 checkLeft:
     lda INPUT
     asl
@@ -237,6 +239,8 @@ moveLeft:
     cmp #2
     bcc checkDown
     sta PLAYERX
+    lda #%00001000
+    sta REFP0
 
 checkDown:
     lda INPUT
@@ -525,6 +529,7 @@ store_10_11_y0:
 
 
 ;--------------------------------------------------------------
+;Fills screen map according to what is on logics map aka THEMAP
 FillScreenMap:
 
     ldx #0
@@ -548,68 +553,72 @@ FillScreenMap:
     bne @rowloop
 
 
+    rts
 
-;    ldx #11
-;@rep0:
-;    lda ROM_GAMEMAP0,x
-;    sta GAMEMAP0,x
-;    dex
-;    bne @rep0
-;
-;    lda ROM_GAMEMAP0,0
-;    sta GAMEMAP0,0
-;
-;    ldx #11
-;@rep1:
-;    lda ROM_GAMEMAP1,x
-;    sta GAMEMAP1,x
-;    dex
-;    bne @rep1
-;    
-;    lda ROM_GAMEMAP1,0
-;    sta GAMEMAP1,0
+;----------------------------------
 
-;    ldx #11
-;@rep2:
-;    lda ROM_GAMEMAP2,x
-;    sta GAMEMAP2,x
-;    dex
-;    bne @rep2
-    
-;    lda ROM_GAMEMAP2,0
-;    sta GAMEMAP2,0
+FillScreenMapWithRomData:
+    ldx #11
+@rep0:
+    lda ROM_GAMEMAP0,x
+    sta GAMEMAP0,x
+    dex
+    bne @rep0
 
-;    ldx #11
-;@rep3:
-;    lda ROM_GAMEMAP3,x
-;    sta GAMEMAP3,x
-;    dex
-;    bne @rep3
-    
-;    lda ROM_GAMEMAP3,0
-;    sta GAMEMAP3,0
+    lda ROM_GAMEMAP0,0
+    sta GAMEMAP0,0
 
-;    ldx #11
-;@rep4:
-;    lda ROM_GAMEMAP4,x
-;    sta GAMEMAP4,x
-;    dex
-;    bne @rep4
+    ldx #11
+@rep1:
+    lda ROM_GAMEMAP1,x
+    sta GAMEMAP1,x
+    dex
+    bne @rep1
+
+    lda ROM_GAMEMAP1,0
+    sta GAMEMAP1,0
+
+    ldx #11
+@rep2:
+    lda ROM_GAMEMAP2,x
+    sta GAMEMAP2,x
+    dex
+    bne @rep2
+
+    lda ROM_GAMEMAP2,0
+    sta GAMEMAP2,0
+
+    ldx #11
+@rep3:
+    lda ROM_GAMEMAP3,x
+    sta GAMEMAP3,x
+    dex
+    bne @rep3
+
+    lda ROM_GAMEMAP3,0
+    sta GAMEMAP3,0
+
+    ldx #11
+@rep4:
+    lda ROM_GAMEMAP4,x
+    sta GAMEMAP4,x
+    dex
+    bne @rep4
 
 
-;    lda ROM_GAMEMAP4,0
-;    sta GAMEMAP4,0
+    lda ROM_GAMEMAP4,0
+    sta GAMEMAP4,0
 
 
-;    ldx #11
-;@rep5:
-;    lda ROM_GAMEMAP5,x
-;    sta GAMEMAP5,x
-;    dex
-;    bne @rep5
-    
-;    lda ROM_GAMEMAP5,0
-;    sta GAMEMAP5,0
+    ldx #11
+@rep5:
+    lda ROM_GAMEMAP5,x
+    sta GAMEMAP5,x
+    dex
+    bne @rep5
+
+    lda ROM_GAMEMAP5,0
+    sta GAMEMAP5,0
 
     rts
 ;--------------------------
@@ -662,11 +671,6 @@ GenerateMap:
     ldy #35
     sta THEMAP,y
 
-
-
-
-
-
     rts
 
 
@@ -674,6 +678,7 @@ GenerateMap:
 VBlank:
     
     jsr FillScreenMap
+    ;jsr FillScreenMapWithRomData
     rts
 
 DWARF_GFX_0:
