@@ -5,7 +5,7 @@
 
 MAPSIZE = 36        ;(12 * 6) / 2
 PLAYERHEIGHT = 9
-LINESPERCELL = 8
+LINESPERCELL = 6
 
 ;----------------------------------
     ;           RAM
@@ -53,9 +53,9 @@ Clear:
     sta COLUP0
 
     ;set player coordinates
-    lda #100
+    lda #65
     sta PLAYERY
-    lda #10
+    lda #2
     sta PLAYERX
 
     
@@ -101,7 +101,7 @@ Kernel:
     sta LINE_IDX
 
 
-    ldx #96 ; scanlines, max scanlines / 2
+    ldx #72 ; scanlines, max scanlines / 2
 
 @KERNEL_LOOP:
 
@@ -185,6 +185,12 @@ Overscan:
     ;some game logic here
     jsr ProcessInput
 
+    lda PLAYERX
+    ldx #0
+    jsr PosSpriteX
+    sta WSYNC
+    sta HMOVE
+
 OverscanLoop:
     sta WSYNC
     lda INTIM
@@ -217,6 +223,8 @@ ProcessInput:
 moveRight:
     lda PLAYERX
     adc 1
+    cmp #140
+    bcs checkLeft
     sta PLAYERX
 checkLeft:
     lda INPUT
@@ -226,6 +234,8 @@ checkLeft:
 moveLeft:
     lda PLAYERX
     sbc 1
+    cmp #2
+    bcc checkDown
     sta PLAYERX
 
 checkDown:
@@ -236,6 +246,8 @@ checkDown:
 moveDown:
     lda PLAYERY
     sbc 1
+    cmp #9
+    bcc checkUp
     sta PLAYERY
 checkUp:
     lda INPUT
@@ -243,6 +255,8 @@ checkUp:
     bcs exit
     lda PLAYERY
     adc 1
+    cmp #72
+    bcs exit
     sta PLAYERY
 exit:
     rts
@@ -658,11 +672,7 @@ GenerateMap:
 
 ;-------------------------
 VBlank:
-    lda PLAYERX
-    ldx #0
-    jsr PosSpriteX
-    sta WSYNC
-    sta HMOVE
+    
     jsr FillScreenMap
     rts
 
