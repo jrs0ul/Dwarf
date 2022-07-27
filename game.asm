@@ -688,14 +688,19 @@ VBlank:
 
 
     ;set the frame for the sprite
-    ldx PLAYER_FRAME
-
+    lda PLAYER_FRAME
+    lsr ;shift left by 3 bits 00000111 -> 0, 00001111 -> 1
+    lsr
+    lsr
+    ;we have to skip 8 screen frames to get first animation frame change
+    tax
     lda DWARF_PTR_LOW,x
     sta PLAYERPTR
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
+    ldx PLAYER_FRAME
     inx
-    cpx #2
+    cpx #16 ;we must not let go to animation frame 3, 00010 000
     bne noteq
     ldx #0
 noteq:
