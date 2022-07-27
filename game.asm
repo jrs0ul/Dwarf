@@ -114,7 +114,18 @@ Kernel:
 
 @KERNEL_LOOP:
 
-    jsr DrawPlayer
+    ;-------------------------------------------------
+    cpx PLAYERY     ;can we draw the player sprite?
+    bcs @nope       ; < PLAYERY
+    cpy #0          ;we already went through all sprite lines
+    beq @nope
+
+    lda (PLAYERPTR),y
+    sta GRP0
+    lda LADDER_GFX,y
+    sta GRP1
+    dey
+@nope:
 
     sta WSYNC           ;wait for the scanline to be drawn
 
@@ -170,19 +181,6 @@ Kernel:
     bne @KERNEL_LOOP ;
 
     rts
-;-----------------------------
-DrawPlayer:
-    cpx PLAYERY     ;can we draw the player sprite?
-    bcs @nope       ; < PLAYERY
-    cpy #0          ;we already went through all sprite lines
-    beq @nope
-
-    lda (PLAYERPTR),y
-    sta GRP0
-    dey
-@nope:
-    rts
-
 ;----------------------------
 Overscan:
     sta WSYNC
