@@ -34,6 +34,8 @@ TMPSCREENCELL1  ds 1
 
 PLAYERPTR       ds 2    ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME    ds 1    ;frame index
+TMPNUM          ds 1
+COLISSIONX      ds 1
 ;------------------------------------------------------
 ;                  117 | 9 free
 ;----------------------------------
@@ -285,6 +287,51 @@ checkUp:
     bcs exit
     sta PLAYERY
 exit:
+    ;----------------------------------------------
+    bit INPT4   ;checking button press;
+    bmi buttonNotPressed ;jump if the button wasn't pressed
+    ;----
+    lda PLAYERX
+    ldx #0
+div:            ; divide PLAYERX by 12, result goes to x
+    inx
+    sbc #12
+    bcs div
+    txa         ;divide the result by 2
+    lsr
+    sta COLISSIONX
+    ;--------------
+    lda PLAYERY
+    ldx #0
+divy:
+    inx
+    sbc #12
+    bcs divy
+
+    stx TMPNUM
+    lda #7
+    sbc TMPNUM
+    tax
+
+    lda #0
+multiply:
+    cpx #0
+    beq zerorow
+    adc #5
+    dex
+    jmp multiply
+zerorow:
+    
+    adc COLISSIONX
+    tax
+    dex
+
+
+    lda #%00000000
+    sta THEMAP,x
+    ;----
+buttonNotPressed:
+    
     rts
 ;--------------------------------------
 PosSpriteX: ;stole this from Adventure
