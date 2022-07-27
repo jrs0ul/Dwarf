@@ -236,6 +236,13 @@ moveRight:
     sta PLAYERX
     lda #%00000000
     sta REFP0
+    ldx PLAYER_FRAME
+    inx
+    cpx #16 ;we must not let go to animation frame 3, 00010 000
+    bne storeframe1
+    ldx #0
+storeframe1:
+    stx PLAYER_FRAME
 checkLeft:
     lda INPUT
     asl
@@ -249,6 +256,13 @@ moveLeft:
     sta PLAYERX
     lda #%00001000
     sta REFP0
+    ldx PLAYER_FRAME
+    inx
+    cpx #16 ;we must not let go to animation frame 3, 00010 000
+    bne storeframe2
+    ldx #0
+storeframe2:
+    stx PLAYER_FRAME
 
 checkDown:
     lda INPUT
@@ -699,14 +713,9 @@ VBlank:
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
     ldx PLAYER_FRAME
-    inx
-    cpx #16 ;we must not let go to animation frame 3, 00010 000
-    bne noteq
-    ldx #0
-noteq:
-    stx PLAYER_FRAME
     rts
-
+;--------------------------------------------
+;ROM constants
 
 DWARF_PTR_LOW:  ; low 8bits of 16bit address
     .byte <(DWARF_GFX_0)
