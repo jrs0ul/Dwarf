@@ -549,7 +549,24 @@ store_8_9:
 
     rts
 
+
 ;--------------------------------------------------------------
+;Fills screen map according to what is on the logics map aka THEMAP
+FillScreenMap:
+
+    ldx #0
+    stx TMPSCREENCELL
+    stx TMPSCREENCELL1
+    ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
+
+@rowloop:
+
+    jsr cell_0_1
+    jsr cell_2_3
+    jsr cell_4_5
+    jsr cell_6_7
+    jsr cell_8_9
+    ;--------------------------------------------------------------
 cell_10_11: ;----------------------
 
     inx
@@ -592,26 +609,6 @@ store_10_11_y0:
     dey
     sta GAMEMAP5,y
 
-    rts
-
-
-;--------------------------------------------------------------
-;Fills screen map according to what is on the logics map aka THEMAP
-FillScreenMap:
-
-    ldx #0
-    stx TMPSCREENCELL
-    stx TMPSCREENCELL1
-    ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
-
-@rowloop:
-
-    jsr cell_0_1
-    jsr cell_2_3
-    jsr cell_4_5
-    jsr cell_6_7
-    jsr cell_8_9
-    jsr cell_10_11
 
     inx
     dey
@@ -690,14 +687,13 @@ FillScreenMapWithRomData:
 ;--------------------------
 GenerateMap:
 
-    lda #%00000000
+    lda #%00010001
     ldy #0
     sta THEMAP,y
     ldy #1
     sta THEMAP,y
     ldy #2
     sta THEMAP,y
-    lda #%00010001
     ldy #3
     sta THEMAP,y
     ldy #4
