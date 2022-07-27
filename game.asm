@@ -31,8 +31,11 @@ LINE_IDX        ds 1  ; line counter for a map cell
 
 TMPSCREENCELL   ds 1    ;two temp variables to help fill the screenmap
 TMPSCREENCELL1  ds 1
+
+PLAYERPTR       ds 2    ;16bit address of the active sprites's frame graphics
+PLAYER_FRAME    ds 1    ;frame index
 ;------------------------------------------------------
-;                  117 | 11 free
+;                  117 | 9 free
 ;----------------------------------
     ;           ROM
     SEG
@@ -172,7 +175,7 @@ DrawPlayer:
     cpy #0          ;we already went through all sprite lines
     beq @nope
 
-    lda DWARF_GFX_0,y
+    lda (PLAYERPTR),y
     sta GRP0
     dey
 @nope:
@@ -187,6 +190,7 @@ Overscan:
     sta TIM64T
 
     ;some game logic here
+
     jsr ProcessInput
 
     lda PLAYERX
@@ -681,7 +685,31 @@ VBlank:
     
     jsr FillScreenMap
     ;jsr FillScreenMapWithRomData
+
+
+    ;set the frame for the sprite
+    ldx PLAYER_FRAME
+
+    lda DWARF_PTR_LOW,x
+    sta PLAYERPTR
+    lda DWARF_PTR_HIGH,x
+    sta PLAYERPTR+1
+    inx
+    cpx #2
+    bne noteq
+    ldx #0
+noteq:
+    stx PLAYER_FRAME
     rts
+
+
+DWARF_PTR_LOW:  ; low 8bits of 16bit address
+    .byte <(DWARF_GFX_0)
+    .byte <(DWARF_GFX_1)
+DWARF_PTR_HIGH: ; high 8bits of 16bit address
+    .byte >(DWARF_GFX_0)
+    .byte >(DWARF_GFX_1)
+
 
 DWARF_GFX_0:
     .byte %00000000
@@ -694,6 +722,19 @@ DWARF_GFX_0:
     .byte %01110000
     .byte %00100000
     .byte %00110000
+
+DWARF_GFX_1:
+    .byte %00000000
+    .byte %00000000
+    .byte %00110000
+    .byte %00100000
+    .byte %00110000
+    .byte %01010000
+    .byte %01010000
+    .byte %01110000
+    .byte %00100000
+    .byte %00110000
+
 
 LADDER_GFX:
     .byte %00000000
