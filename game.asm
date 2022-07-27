@@ -37,7 +37,7 @@ PLAYER_FRAME    ds 1    ;frame index
 TMPNUM          ds 1
 COLISSIONX      ds 1
 ;------------------------------------------------------
-;                  117 | 9 free
+;                  121 | 7 free
 ;----------------------------------
     ;           ROM
     SEG
@@ -493,7 +493,7 @@ nextseg3:
     eor #%00000001
     and #%00001111
     bne store_6_7
-    ;
+    
     lda TMPSCREENCELL1
     eor #%11100000
     sta TMPSCREENCELL1
@@ -553,9 +553,8 @@ store_8_9:
 cell_10_11: ;----------------------
 
     inx
-    lda #%00000000
+    lda #0
     sta TMPSCREENCELL1
-
 
 
     lda THEMAP,x
@@ -690,15 +689,24 @@ FillScreenMapWithRomData:
     rts
 ;--------------------------
 GenerateMap:
-    ldx #0
-@GenLoop:
-    lda #%00010000
-    sta THEMAP,x
-    inx
-    cpx #MAPSIZE
-    bne @GenLoop
 
-    lda #%00000001
+    lda #%00000000
+    ldy #0
+    sta THEMAP,y
+    ldy #1
+    sta THEMAP,y
+    ldy #2
+    sta THEMAP,y
+    lda #%00010001
+    ldy #3
+    sta THEMAP,y
+    ldy #4
+    sta THEMAP,y
+    ldy #5
+    sta THEMAP,y
+
+
+    lda #%00010001
     ldy #6
     sta THEMAP,y
     ldy #7
@@ -710,6 +718,19 @@ GenerateMap:
     ldy #10
     sta THEMAP,y
     ldy #11
+    sta THEMAP,y
+
+    ldy #12
+    sta THEMAP,y
+    ldy #13
+    sta THEMAP,y
+    ldy #14
+    sta THEMAP,y
+    ldy #15
+    sta THEMAP,y
+    ldy #16
+    sta THEMAP,y
+    ldy #17
     sta THEMAP,y
 
     ldy #18
@@ -724,6 +745,21 @@ GenerateMap:
     sta THEMAP,y
     ldy #23
     sta THEMAP,y
+
+    ldy #24
+    sta THEMAP,y
+    ldy #25
+    sta THEMAP,y
+    ldy #26
+    sta THEMAP,y
+    ldy #27
+    sta THEMAP,y
+    ldy #28
+    sta THEMAP,y
+    ldy #29
+    sta THEMAP,y
+
+
 
     ldy #30
     sta THEMAP,y
