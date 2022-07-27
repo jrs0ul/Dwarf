@@ -24,13 +24,12 @@ GAMEMAP5        ds 12
 
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
-TEMPY           ds 1  ; player posY + height
 INPUT           ds 1  ; Input from the joystick
 TEMP_X_INDEX    ds 1
 SCREENMAP_IDX   ds 1  ; index of the screenmap
 LINE_IDX        ds 1  ; line counter for a map cell
 
-TMPSCREENCELL   ds 1
+TMPSCREENCELL   ds 1    ;two temp variables to help fill the screenmap
 TMPSCREENCELL1  ds 1
 ;------------------------------------------------------
 ;                  117 | 11 free
@@ -57,6 +56,11 @@ Clear:
     sta PLAYERY
     lda #2
     sta PLAYERX
+
+    lda #%00011000
+    sta GRP1
+    lda #$C6
+    sta COLUP1
 
     
     jsr GenerateMap
@@ -290,7 +294,6 @@ PosSpriteX: ;stole this from Adventure
 ;--------------------------------------------------------------
 cell_0_1: 
 
-    
     lda #%00000000
     sta TMPSCREENCELL
     sta TMPSCREENCELL1
@@ -529,14 +532,13 @@ store_10_11_y0:
 
 
 ;--------------------------------------------------------------
-;Fills screen map according to what is on logics map aka THEMAP
+;Fills screen map according to what is on the logics map aka THEMAP
 FillScreenMap:
 
     ldx #0
     stx TMPSCREENCELL
     stx TMPSCREENCELL1
-    ldy #11
-    ;sta TMPMAPROWIDX
+    ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
 
 @rowloop:
 
@@ -549,7 +551,7 @@ FillScreenMap:
 
     inx
     dey
-    cpy #255
+    cpy #255    ;supposedly -1
     bne @rowloop
 
 
@@ -692,6 +694,19 @@ DWARF_GFX_0:
     .byte %01110000
     .byte %00100000
     .byte %00110000
+
+LADDER_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
+    .byte %01000010
+
 
 ROM_GAMEMAP0: ; only first four bits are legit
     .byte %00001110
