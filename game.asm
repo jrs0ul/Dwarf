@@ -326,7 +326,6 @@ div:            ; divide PLAYERX by 12, result goes to x
     sbc #12
     bcs div
     txa         ;divide the result by 2
-    lsr
     sta COLISSIONX
     ;--------------
     lda PLAYERY
@@ -350,12 +349,25 @@ multiply:
     jmp multiply
 zerorow:
     
-    adc COLISSIONX
+    sta TMPNUM ; store ( y * row len)
+    lda COLISSIONX
+
+
+    lsr
+    bcs secondsegmentmined
+    adc TMPNUM
     tax
     dex
-
-
-    lda #%00000000
+    lda THEMAP,x
+    and #%11110000
+    jmp changemap
+secondsegmentmined:
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    and #%00001111
+changemap:
     sta THEMAP,x
     ;----
 buttonNotPressed:
