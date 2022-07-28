@@ -36,8 +36,10 @@ PLAYERPTR       ds 2    ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME    ds 1    ;frame index
 TMPNUM          ds 1
 COLISSIONX      ds 1
+LADDER_LINE_IDX ds 1
+PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  121 | 7 free
+;                  123 | 5 free
 ;----------------------------------
     ;           ROM
     SEG
@@ -103,6 +105,8 @@ Kernel:
 
     ldy #PLAYERHEIGHT
 
+    sty LADDER_LINE_IDX
+
     lda #11
     sta SCREENMAP_IDX ; bottom of the screenmap
 
@@ -114,70 +118,88 @@ Kernel:
 
 @KERNEL_LOOP:
 
-    ;-------------------------------------------------
-    cpx PLAYERY     ;can we draw the player sprite?
-    bcs @nope       ; < PLAYERY
-    cpy #0          ;we already went through all sprite lines
-    beq @nope
+    ;------------------------------------------------------------------------
+    cpx PLAYERY             ;3 3      can we draw the player sprite?
+    bcs @nope               ;2 5     < PLAYERY
+    cpy #0                  ;2 7     we already went through all sprite lines
+    beq @nope               ;2 9
 
-    lda (PLAYERPTR),y
-    sta GRP0
-    lda LADDER_GFX,y
-    sta GRP1
-    dey
+    lda (PLAYERPTR),y       ;5 14
+    sta GRP0                ;3 17
+    dey                     ;2 19
 @nope:
+    sty PLAYER_LINE_IDX     ;3 22
+    ldy LADDER_LINE_IDX     ;3 25
+    lda LADDER_GFX,y        ;4 29
+    sta GRP1                ;3 32
+    dey                     ;2 34
+    cpy #0                  ;2 36
+    bne nextsprite          ;2 38
+resetY:
+    ldy #PLAYERHEIGHT       ;2 40
+nextsprite:
+    sty LADDER_LINE_IDX     ;3 43
+    ldy PLAYER_LINE_IDX     ;3 46
+    ;-------------------------------------------------------------------------
 
     sta WSYNC           ;wait for the scanline to be drawn
 
-    ;---------------DRAW MAP----------------------
+    ;---------------DRAW MAP--------------------------------------------------
 
-    stx TEMP_X_INDEX    ;3 3    save scanline index
+    stx TEMP_X_INDEX        ;3 3    save scanline index
 
-    ldx SCREENMAP_IDX   ;3 6
+    ldx SCREENMAP_IDX       ;3 6
 
-    lda GAMEMAP0,x      ;4 10
-    sta PF0             ;3 13
+    lda GAMEMAP0,x          ;4 10
+    sta PF0                 ;3 13
 
-    lda GAMEMAP1,x      ;4 17
-    sta PF1             ;3 20
+    lda GAMEMAP1,x          ;4 17
+    sta PF1                 ;3 20
 
-    lda GAMEMAP2,x      ;4 24
-    sta PF2             ;3 27
+    lda GAMEMAP2,x          ;4 24
+    sta PF2                 ;3 27
 
+    ;------right side of the screen
 
-    lda GAMEMAP3,x      ;4 31
-    sta PF0             ;3 34
+    lda GAMEMAP3,x          ;4 31
+    sta PF0                 ;3 34
 
-    nop                 ;2 36
-    nop                 ;2 38
+    nop                     ;2 36
+    nop                     ;2 38
     
-    lda GAMEMAP4,x      ;4 42
-    sta PF1             ;3 45
+    lda GAMEMAP4,x          ;4 42
+    sta PF1                 ;3 45
     
-    nop                 ;2 47
-    nop                 ;2 49
+    nop                     ;2 47
+    nop                     ;2 49
 
-    lda GAMEMAP5,x      ;4 53
-    sta PF2             ;3 56
+    lda GAMEMAP5,x          ;4 53
+    sta PF2                 ;3 56
+    
+    ;--- some code I wanted to place in to this scanline
+
+    lda #0                  ;2 58   Lets turn off the playfield for one scanline
+    ldx LINE_IDX            ;3 61   decrement current line count for one map cell
+
+    dex                     ;2 63
+    sta PF0                 ;3 66
+    sta PF1                 ;3 69
+    sta PF2                 ;3 72
 
     ;---------------------------------------------
-    sta WSYNC           ;finish the scanline, we don't want to cram sprite drawing instructions to be here
-    lda #0              ; Lets turn off the playfield for one scanline
-    sta PF0             ;3 
-    sta PF1             ;3 
-    sta PF2             ;3 
+    sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
+    ;---------------------------------------------
 
-    ldx LINE_IDX        ;decrement current line count for one map cell
-    dex
+    ;this probably adds up to the sprite scanline
     bne @cont
-    dec SCREENMAP_IDX   ;5 move to next map cell
-    ldx #LINESPERCELL   ;reset line count
+    dec SCREENMAP_IDX       ;5  move to next map cell
+    ldx #LINESPERCELL       ;2  reset line count
 @cont:
-    stx LINE_IDX        ;save current line count
-    ldx TEMP_X_INDEX    ;restore X (scanline index)
+    stx LINE_IDX            ;3  save current line count
+    ldx TEMP_X_INDEX        ;3  restore X (scanline index)
 
     ;---------------------------------------------
-    dex              ;
+    dex                     ;2
     bne @KERNEL_LOOP ;
 
     rts
@@ -239,7 +261,7 @@ moveRight:
     ldx PLAYER_FRAME
     inx
     cpx #16 ;we must not let go to animation frame 3, 00010 000
-    bne storeframe1
+    bcc storeframe1
     ldx #0
 storeframe1:
     stx PLAYER_FRAME
@@ -259,7 +281,7 @@ moveLeft:
     ldx PLAYER_FRAME
     inx
     cpx #16 ;we must not let go to animation frame 3, 00010 000
-    bne storeframe2
+    bcc storeframe2
     ldx #0
 storeframe2:
     stx PLAYER_FRAME
@@ -275,6 +297,8 @@ moveDown:
     cmp #9
     bcc checkUp
     sta PLAYERY
+    lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
+    sta PLAYER_FRAME
 checkUp:
     lda INPUT
     asl
@@ -284,11 +308,17 @@ checkUp:
     cmp #72
     bcs exit
     sta PLAYERY
+    lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
+    sta PLAYER_FRAME
 exit:
     ;----------------------------------------------
     bit INPT4   ;checking button press;
     bmi buttonNotPressed ;jump if the button wasn't pressed
     ;----
+
+    lda #%00011111  ; after 3 x lsr it will turn into 3(4th frame - mining)
+    sta PLAYER_FRAME
+
     lda PLAYERX
     ldx #0
 div:            ; divide PLAYERX by 12, result goes to x
@@ -797,9 +827,13 @@ VBlank:
 DWARF_PTR_LOW:  ; low 8bits of 16bit address
     .byte <(DWARF_GFX_0)
     .byte <(DWARF_GFX_1)
+    .byte <(DWARF_GFX_2)
+    .byte <(DWARF_GFX_3)
 DWARF_PTR_HIGH: ; high 8bits of 16bit address
     .byte >(DWARF_GFX_0)
     .byte >(DWARF_GFX_1)
+    .byte >(DWARF_GFX_2)
+    .byte >(DWARF_GFX_3)
 
 
 DWARF_GFX_0:
@@ -825,6 +859,32 @@ DWARF_GFX_1:
     .byte %01110000
     .byte %00100000
     .byte %00110000
+
+DWARF_GFX_2:
+    .byte %00000000
+    .byte %00000000
+    .byte %00100100
+    .byte %00100100
+    .byte %00011000
+    .byte %00011000
+    .byte %01011010
+    .byte %00111100
+    .byte %00011000
+    .byte %00011000
+
+DWARF_GFX_3:
+    .byte %00000000
+    .byte %00000000
+    .byte %01000100
+    .byte %00101000
+    .byte %00110000
+    .byte %10110101
+    .byte %10111101
+    .byte %01110011
+    .byte %00100110
+    .byte %00110000
+
+;-------------------------------------------
 
 
 LADDER_GFX:
