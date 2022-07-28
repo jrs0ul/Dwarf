@@ -69,6 +69,7 @@ Clear:
     lda #$C6
     sta COLUP1
 
+
     
     jsr GenerateMap
 
@@ -215,12 +216,7 @@ Overscan:
 
     jsr ProcessInput
 
-    lda PLAYERX
-    ldx #0
-    jsr PosSpriteX
-    sta WSYNC
-    sta HMOVE
-
+    
 OverscanLoop:
     sta WSYNC
     lda INTIM
@@ -374,23 +370,22 @@ buttonNotPressed:
     
     rts
 ;--------------------------------------
-PosSpriteX: ;stole this from Adventure
-    ldy     #$02
-    sec
-@loop:
-    iny
-    sbc #$0f
-    bcs @loop
-    eor #$ff
-    sbc #$06
-    asl
-    asl 
-    asl
-    asl
+; Moves sprite horizontaly
+; A : X of the sprite
+; X : 0- player0, 1 - player1
+PosSpriteX: 
     sty WSYNC
-@loop1:
-    dey
-    bpl @loop1
+    bit 0           ; waste 3 cycles
+    sec             ; set carry flag
+DivideLoop
+    sbc #15         ; subtract 15
+    bcs DivideLoop  ; branch until negative
+    eor #7          ; calculate fine offset
+    asl
+    asl
+    asl
+    asl
+
     sta RESP0,x
     sta HMP0,x
 
@@ -809,7 +804,13 @@ GenerateMap:
 
 ;-------------------------
 VBlank:
-    
+
+    lda PLAYERX
+    ldx #0
+    jsr PosSpriteX
+    sta WSYNC
+    sta HMOVE
+
     jsr FillScreenMap
     ;jsr FillScreenMapWithRomData
 
