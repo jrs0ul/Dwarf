@@ -6,6 +6,7 @@
 MAPSIZE = 36        ;(12 * 6) / 2
 PLAYERHEIGHT = 9
 LINESPERCELL = 6
+NO_ILLEGAL_OPCODES = 1
 
 ;----------------------------------------------------
 ;           RAM
