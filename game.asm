@@ -385,6 +385,9 @@ PosSpriteX: ;stole this from Adventure
     rts
 
 ;--------------------------------------------------------------
+;Fills a row from the logic map to the screenmap
+Fill_ScreenMaps_row:
+
 cell_0_1: 
 
     lda #%00000000
@@ -423,7 +426,6 @@ store_0_1:
     iny
     sta GAMEMAP1,y
 
-    rts
 ;--------------------------------------------------------------
 cell_2_3: 
 
@@ -457,8 +459,6 @@ store_2_3:
     dey
     sta GAMEMAP1,y
 
-    rts
-
 ;--------------------------------------------------------------
 cell_4_5: ;------------------------
     
@@ -486,7 +486,6 @@ nextseg2:
     eor #%00111000
     sta TMPSCREENCELL
 
-    
 
 store_4_5:
 
@@ -494,8 +493,7 @@ store_4_5:
     sta GAMEMAP2,y
     iny
     sta GAMEMAP2,y
-    
-    rts
+
 ;--------------------------------------------------------------
 cell_6_7: ;------------------------
 
@@ -539,7 +537,6 @@ store_6_7:
     iny
     sta GAMEMAP3,y
 
-    rts
 ;--------------------------------------------------------------
 cell_8_9: ;------------------------
 
@@ -575,25 +572,7 @@ store_8_9:
     dey
     sta GAMEMAP4,y
 
-    rts
 
-
-;--------------------------------------------------------------
-;Fills screen map according to what is on the logics map aka THEMAP
-FillScreenMap:
-
-    ldx #0
-    stx TMPSCREENCELL
-    stx TMPSCREENCELL1
-    ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
-
-@rowloop:
-
-    jsr cell_0_1
-    jsr cell_2_3
-    jsr cell_4_5
-    jsr cell_6_7
-    jsr cell_8_9
     ;--------------------------------------------------------------
 cell_10_11: ;----------------------
 
@@ -637,6 +616,21 @@ store_10_11_y0:
     dey
     sta GAMEMAP5,y
 
+    rts
+
+
+;--------------------------------------------------------------
+;Fills screen map according to what is on the logics map aka THEMAP
+FillScreenMap:
+
+    ldx #0
+    stx TMPSCREENCELL
+    stx TMPSCREENCELL1
+    ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
+
+@rowloop:
+
+    jsr Fill_ScreenMaps_row
 
     inx
     dey
