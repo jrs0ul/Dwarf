@@ -7,8 +7,9 @@ MAPSIZE = 36        ;(12 * 6) / 2
 PLAYERHEIGHT = 9
 LINESPERCELL = 6
 
-;----------------------------------
-    ;           RAM
+;----------------------------------------------------
+;           RAM
+;-----------------------------------------------------
     SEG.U VARS
     ORG $80
 
@@ -39,21 +40,15 @@ COLISSIONX      ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  123 | 5 free
-;----------------------------------
+;                  123 | 5 bytes free
+;------------------------------------------------------
     ;           ROM
     SEG
     ORG $F000 ;4K Rom , F8000 = 2K
 
 Reset:
 
-    ; Clear ram and TIA registers
-    ldx #0
-    lda #0
-Clear:
-    sta 0,x
-    inx
-    bne Clear
+    CLEAN_START ; from macro.h
 
     lda #15     ; some gray color for the player
     sta COLUP0
@@ -61,7 +56,7 @@ Clear:
     ;set player coordinates
     lda #65
     sta PLAYERY
-    lda #2
+    lda #3
     sta PLAYERX
 
     lda #%00011000
@@ -375,16 +370,16 @@ buttonNotPressed:
 ; X : 0- player0, 1 - player1
 PosSpriteX: 
     sty WSYNC
-    bit 0           ; waste 3 cycles
-    sec             ; set carry flag
+    bit 0           ;3 3    waste 3 cycles
+    sec             ;2 5    set carry flag
 DivideLoop
-    sbc #15         ; subtract 15
-    bcs DivideLoop  ; branch until negative
-    eor #7          ; calculate fine offset
-    asl
-    asl
-    asl
-    asl
+    sbc #15         ;2 7    subtract 15
+    bcs DivideLoop  ;2 9    branch until negative
+    eor #7          ;2 11   calculate fine offset
+    asl             ;2 13
+    asl             ;2 15
+    asl             ;2 17
+    asl             ;2 19
 
     sta RESP0,x
     sta HMP0,x
