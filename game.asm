@@ -27,7 +27,7 @@ GAMEMAP5        ds 12
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
 INPUT           ds 1  ; Input from the joystick
-TEMP_X_INDEX    ds 1
+TEMP_X_INDEX    ds 1  ; Temp variable used in drawing, and in input checking
 SCREENMAP_IDX   ds 1  ; index of the screenmap
 LINE_IDX        ds 1  ; line counter for a map cell
 
@@ -37,7 +37,7 @@ TMPSCREENCELL1  ds 1
 PLAYERPTR       ds 2    ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME    ds 1    ;frame index
 TMPNUM          ds 1
-COLISSIONX      ds 1
+SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
@@ -60,10 +60,14 @@ Reset:
     lda #3
     sta PLAYERX
 
+
     lda #%00011000
     sta GRP1
     lda #$C6
     sta COLUP1
+
+    lda #0
+    sta SCREEN_FRAME
 
 
     
@@ -318,7 +322,7 @@ div:            ; divide PLAYERX by 12, result goes to x
     sbc #12
     bcs div
     txa         ;divide the result by 2
-    sta COLISSIONX
+    sta TEMP_X_INDEX
     ;--------------
     lda PLAYERY
     ldx #0
@@ -342,7 +346,7 @@ multiply:
 zerorow:
     
     sta TMPNUM ; store ( y * row len)
-    lda COLISSIONX
+    lda TEMP_X_INDEX
 
 
     lsr
@@ -806,6 +810,16 @@ VBlank:
     jsr PosSpriteX
     sta WSYNC
     sta HMOVE
+
+    ldx SCREEN_FRAME
+    inx
+    cpx #2
+    bne continueVBlank
+
+    ldx #0
+
+continueVBlank:
+    stx SCREEN_FRAME
 
     jsr FillScreenMap
     ;jsr FillScreenMapWithRomData
