@@ -27,7 +27,7 @@ GAMEMAP5        ds 12
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
 
-LADDERY         ds 1  
+PLAYER_DIR      ds 1  
 LADDERX         ds 1
 
 INPUT           ds 1  ; Input from the joystick
@@ -255,11 +255,54 @@ ProcessInput:
     sta INPUT
     bcs checkLeft
 moveRight:
+    lda #1
+    sta PLAYER_DIR
     lda PLAYERX
-    adc 1
+    adc #6
     cmp #140
     bcs checkLeft
     sta PLAYERX
+
+
+    ;-------------Let's check the collision
+    jsr GetActiveMapCell
+
+    lsr 
+    bcs secondsegRight
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    beq revertRight
+    jmp walkRight
+secondsegRight:
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    beq revertRight
+    jmp walkRight
+revertRight ; need to revert x that was used for collision check
+    lda PLAYERX
+    sec
+    sbc #6
+    sta PLAYERX
+    jmp exitRightCollisionCheck
+
+walkRight:
+
+    lda PLAYERX
+    sec
+    sbc #5
+    sta PLAYERX
+
+exitRightCollisionCheck:
+    ;------------
+
     lda #%00000000
     sta REFP0
     ldx PLAYER_FRAME
@@ -269,17 +312,59 @@ moveRight:
     ldx #0
 storeframe1:
     stx PLAYER_FRAME
+
+
+
 checkLeft:
     lda INPUT
     asl
     sta INPUT
     bcs checkDown
 moveLeft:
+    lda #2
+    sta PLAYER_DIR
+
     lda PLAYERX
-    sbc 1
+    ;sbc #1
+    adc #1
     cmp #2
     bcc checkDown
     sta PLAYERX
+    ;-------------Let's check the collision
+    jsr GetActiveMapCell
+    lsr 
+    bcs twosegLeft
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    eor #%00000001
+    and #%00001111
+    beq revertLeft
+    jmp walkleft
+twosegLeft:
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    eor #%00010000
+    and #%11110000
+    beq revertLeft
+    jmp walkleft
+revertLeft
+    lda PLAYERX
+    sec
+    sbc #1
+    sta PLAYERX
+    jmp exitLeftColisionCheck
+
+walkleft:
+    lda PLAYERX
+    sec
+    sbc #2
+    sta PLAYERX
+exitLeftColisionCheck:
+    ;----------
     lda #%00001000
     sta REFP0
     ldx PLAYER_FRAME
@@ -323,6 +408,54 @@ exit:
     lda #%00011111  ; after 3 x lsr it will turn into 3(4th frame - mining)
     sta PLAYER_FRAME
 
+    lda PLAYER_DIR
+    cmp #1
+    bne checkCellCollision
+    lda PLAYERX
+    adc #6
+    sta PLAYERX
+;    jmp checkCellCollision
+;checkifleftdir:
+;    cmp #2
+;    bne checkCellCollision
+
+checkCellCollision:
+
+    jsr GetActiveMapCell
+
+    lsr
+    bcs secondsegmentmined
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    and #%11110000
+    jmp changemap
+secondsegmentmined:
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    and #%00001111
+changemap:
+    sta THEMAP,x
+    ;----
+    lda PLAYER_DIR
+    cmp #1
+    bne buttonNotPressed
+    lda PLAYERX
+    clc
+    sbc #6
+    sta PLAYERX
+
+buttonNotPressed:
+    
+    rts
+;-------------------------------------
+;Takes PLAYERX & PLAYERY
+;Stores y*row len in TMPNUM
+;X in A
+GetActiveMapCell
     lda PLAYERX
     ldx #0
 div:            ; divide PLAYERX by 12, result goes to x
@@ -356,27 +489,9 @@ zerorow:
     sta TMPNUM ; store ( y * row len)
     lda TEMP_X_INDEX
 
-
-    lsr
-    bcs secondsegmentmined
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    and #%11110000
-    jmp changemap
-secondsegmentmined:
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    and #%00001111
-changemap:
-    sta THEMAP,x
-    ;----
-buttonNotPressed:
-    
     rts
+
+
 ;--------------------------------------
 ; Moves sprite horizontaly
 ; A : X of the sprite
@@ -747,15 +862,15 @@ VBlank:
     jsr PosSpriteX
     sta HMOVE
 
-    ldx SCREEN_FRAME
-    inx
-    cpx #2
-    bne continueVBlank
+;    ldx SCREEN_FRAME
+;    inx
+;    cpx #2
+;    bne continueVBlank
 
-    ldx #0
+;    ldx #0
 
-continueVBlank:
-    stx SCREEN_FRAME
+;continueVBlank:
+ ;   stx SCREEN_FRAME
 
     jsr FillScreenMap
     ;jsr FillScreenMapWithRomData
