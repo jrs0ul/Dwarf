@@ -6,7 +6,7 @@
 MAPSIZE = 36        ;(12 * 6) / 2
 PLAYERHEIGHT = 9
 LINESPERCELL = 6
-NO_ILLEGAL_OPCODES = 1
+NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
 ;----------------------------------------------------
 ;           RAM
@@ -26,16 +26,23 @@ GAMEMAP5        ds 12
 
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
+
+LADDERY         ds 1  
+LADDERX         ds 1
+
 INPUT           ds 1  ; Input from the joystick
 TEMP_X_INDEX    ds 1  ; Temp variable used in drawing, and in input checking
-SCREENMAP_IDX   ds 1  ; index of the screenmap
-LINE_IDX        ds 1  ; line counter for a map cell
 
-TMPSCREENCELL   ds 1    ;two temp variables to help fill the screenmap
-TMPSCREENCELL1  ds 1
+SCREENMAP_IDX:
+TMPSCREENCELL1:
+    ds 1  ; index of the screenmap line; used in drawing
+TMPSCREENCELL:
+LINE_IDX:
+    ds 1  ; line counter for a map cell
 
-PLAYERPTR       ds 2    ;16bit address of the active sprites's frame graphics
-PLAYER_FRAME    ds 1    ;frame index
+
+PLAYERPTR       ds 2  ;16bit address of the active sprites's frame graphics
+PLAYER_FRAME    ds 1  ;frame index
 TMPNUM          ds 1
 SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
@@ -55,10 +62,13 @@ Reset:
     sta COLUP0
 
     ;set player coordinates
-    lda #65
+    lda #69
     sta PLAYERY
     lda #3
     sta PLAYERX
+
+    lda #3
+    sta LADDERX
 
 
     lda #%00011000
@@ -131,13 +141,11 @@ Kernel:
 @nope:
     sty PLAYER_LINE_IDX     ;3 22
     ldy LADDER_LINE_IDX     ;3 25
+    cpy #0
+    beq nextsprite
     lda LADDER_GFX,y        ;4 29
     sta GRP1                ;3 32
     dey                     ;2 34
-    cpy #0                  ;2 36
-    bne nextsprite          ;2 38
-resetY:
-    ldy #PLAYERHEIGHT       ;2 40
 nextsprite:
     sty LADDER_LINE_IDX     ;3 43
     ldy PLAYER_LINE_IDX     ;3 46
@@ -625,7 +633,6 @@ store_10_11_y0:
 
     rts
 
-
 ;--------------------------------------------------------------
 ;Fills screen map according to what is on the logics map aka THEMAP
 FillScreenMap:
@@ -716,89 +723,13 @@ FillScreenMapWithRomData:
 ;--------------------------
 GenerateMap:
 
+    ldx #MAPSIZE
     lda #%00010001
-    ldy #0
-    sta THEMAP,y
-    ldy #1
-    sta THEMAP,y
-    ldy #2
-    sta THEMAP,y
-    ldy #3
-    sta THEMAP,y
-    ldy #4
-    sta THEMAP,y
-    ldy #5
-    sta THEMAP,y
-
-
-    lda #%00010001
-    ldy #6
-    sta THEMAP,y
-    ldy #7
-    sta THEMAP,y
-    ldy #8
-    sta THEMAP,y
-    ldy #9
-    sta THEMAP,y
-    ldy #10
-    sta THEMAP,y
-    ldy #11
-    sta THEMAP,y
-
-    ldy #12
-    sta THEMAP,y
-    ldy #13
-    sta THEMAP,y
-    ldy #14
-    sta THEMAP,y
-    ldy #15
-    sta THEMAP,y
-    ldy #16
-    sta THEMAP,y
-    ldy #17
-    sta THEMAP,y
-
-    ldy #18
-    sta THEMAP,y
-    ldy #19
-    sta THEMAP,y
-    ldy #20
-    sta THEMAP,y
-    ldy #21
-    sta THEMAP,y
-    ldy #22
-    sta THEMAP,y
-    ldy #23
-    sta THEMAP,y
-
-    ldy #24
-    sta THEMAP,y
-    ldy #25
-    sta THEMAP,y
-    ldy #26
-    sta THEMAP,y
-    ldy #27
-    sta THEMAP,y
-    ldy #28
-    sta THEMAP,y
-    ldy #29
-    sta THEMAP,y
-
-
-
-    ldy #30
-    sta THEMAP,y
-    ldy #31
-    sta THEMAP,y
-    ldy #32
-    sta THEMAP,y
-    ldy #33
-    sta THEMAP,y
-    ldy #34
-    sta THEMAP,y
-    ldy #35
-    sta THEMAP,y
-
+genloop:
+    sta THEMAP,x
+    dex
+    bne genloop
+    
     rts
 
 
@@ -809,6 +740,11 @@ VBlank:
     ldx #0
     jsr PosSpriteX
     sta WSYNC
+    sta HMOVE
+
+    lda LADDERX
+    ldx #1
+    jsr PosSpriteX
     sta HMOVE
 
     ldx SCREEN_FRAME
