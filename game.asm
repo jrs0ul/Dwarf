@@ -27,19 +27,18 @@ GAMEMAP5        ds 12
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
 
-PLAYER_DIR      ds 1  
+PLAYER_DIR      ds 1  ; Player's direction
 LADDERX         ds 1
 
 INPUT           ds 1  ; Input from the joystick
 TEMP_X_INDEX    ds 1  ; Temp variable used in drawing, and in input checking
 
-SCREENMAP_IDX:
-TMPSCREENCELL1:
-    ds 1  ; index of the screenmap line; used in drawing
-TMPSCREENCELL:
-LINE_IDX:
-    ds 1  ; line counter for a map cell
-
+SCREENMAP_IDX:        ;index of the screenmap line; used in drawing
+TMPSCREENCELL1:       ;temporary variable for fillscreenmap
+                ds 1
+TMPSCREENCELL:        ;temporary variable for fillscreenmap
+LINE_IDX:             ; line counter for a map cell
+                ds 1
 
 PLAYERPTR       ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME    ds 1  ;frame index
@@ -111,8 +110,8 @@ Kernel:
     lda #0
     sta COLUBK      ;set X as the background color
 
-    lda #$1C
-    sta COLUPF      ;make playfield yellow
+    lda #$FC
+    sta COLUPF      ;brown bricks
 
     ldy #PLAYERHEIGHT
 
@@ -127,18 +126,18 @@ Kernel:
 
     ldx #72 ; scanlines, max scanlines / 2
 
-@KERNEL_LOOP:
+KERNEL_LOOP:
 
     ;------------------------------------------------------------------------
-    cpx PLAYERY             ;3 3      can we draw the player sprite?
-    bcs @nope               ;2 5     < PLAYERY
+    cpx PLAYERY             ;3 3     can we draw the player sprite?
+    bcs nope                ;2 5     < PLAYERY
     cpy #0                  ;2 7     we already went through all sprite lines
-    beq @nope               ;2 9
+    beq nope                ;2 9
 
-    lda (PLAYERPTR),y       ;5 14
-    sta GRP0                ;3 17
+    lda (PLAYERPTR),y       ;5 14    let's load a line from a sprite frame
+    sta GRP0                ;3 17    and store it to the Player0 sprite
     dey                     ;2 19
-@nope:
+nope:
     sty PLAYER_LINE_IDX     ;3 22
     ldy LADDER_LINE_IDX     ;3 25
     cpy #0
@@ -200,16 +199,33 @@ nextsprite:
     ;---------------------------------------------
 
     ;this probably adds up to the sprite scanline
-    bne @cont
+    bne cont
     dec SCREENMAP_IDX       ;5  move to next map cell
     ldx #LINESPERCELL       ;2  reset line count
-@cont:
+cont:
     stx LINE_IDX            ;3  save current line count
     ldx TEMP_X_INDEX        ;3  restore X (scanline index)
 
     ;---------------------------------------------
     dex                     ;2
-    bne @KERNEL_LOOP ;
+    bne KERNEL_LOOP ;
+    
+    ;let's draw remaining scanlines
+    ;---------------------------------------------
+    ldx #46
+    lda #0
+    sta GRP0
+    lda #15
+    sta COLUPF
+    lda #%01010100
+    sta PF1
+
+score_line_loop:
+
+    sta WSYNC
+    dex
+    bne score_line_loop
+
 
     rts
 ;----------------------------
@@ -412,12 +428,8 @@ exit:
     cmp #1
     bne checkCellCollision
     lda PLAYERX
-    adc #6
+    adc #6          ;need to add a bit to player x, when it's facing right
     sta PLAYERX
-;    jmp checkCellCollision
-;checkifleftdir:
-;    cmp #2
-;    bne checkCellCollision
 
 checkCellCollision:
 
@@ -439,7 +451,8 @@ secondsegmentmined:
     and #%00001111
 changemap:
     sta THEMAP,x
-    ;----
+
+    ;----   Let's restore the X
     lda PLAYER_DIR
     cmp #1
     bne buttonNotPressed
@@ -757,14 +770,14 @@ FillScreenMap:
     stx TMPSCREENCELL1
     ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
 
-@rowloop:
+rowloop:
 
     jsr Fill_ScreenMaps_row
 
     inx
     dey
     cpy #255    ;supposedly -1
-    bne @rowloop
+    bne rowloop
 
 
     rts
@@ -773,51 +786,51 @@ FillScreenMap:
 
 FillScreenMapWithRomData:
     ldx #11
-@rep0:
+rep0:
     lda ROM_GAMEMAP0,x
     sta GAMEMAP0,x
     dex
-    bne @rep0
+    bne rep0
 
     lda ROM_GAMEMAP0,0
     sta GAMEMAP0,0
 
     ldx #11
-@rep1:
+rep1:
     lda ROM_GAMEMAP1,x
     sta GAMEMAP1,x
     dex
-    bne @rep1
+    bne rep1
 
     lda ROM_GAMEMAP1,0
     sta GAMEMAP1,0
 
     ldx #11
-@rep2:
+rep2:
     lda ROM_GAMEMAP2,x
     sta GAMEMAP2,x
     dex
-    bne @rep2
+    bne rep2
 
     lda ROM_GAMEMAP2,0
     sta GAMEMAP2,0
 
     ldx #11
-@rep3:
+rep3:
     lda ROM_GAMEMAP3,x
     sta GAMEMAP3,x
     dex
-    bne @rep3
+    bne rep3
 
     lda ROM_GAMEMAP3,0
     sta GAMEMAP3,0
 
     ldx #11
-@rep4:
+rep4:
     lda ROM_GAMEMAP4,x
     sta GAMEMAP4,x
     dex
-    bne @rep4
+    bne rep4
 
 
     lda ROM_GAMEMAP4,0
@@ -825,11 +838,11 @@ FillScreenMapWithRomData:
 
 
     ldx #11
-@rep5:
+rep5:
     lda ROM_GAMEMAP5,x
     sta GAMEMAP5,x
     dex
-    bne @rep5
+    bne rep5
 
     lda ROM_GAMEMAP5,0
     sta GAMEMAP5,0
