@@ -1,5 +1,9 @@
 # Dwarf
-Atari 2600 game about digging underground
+Atari 2600 game about digging.
 
-DASM is required to be able to build the project.
-Launch sh make.sh from the project's directory to compile.
+You will need DASM to build this game:
+[https://dasm-assembler.github.io/](https://dasm-assembler.github.io/)
+
+On Linux launch **make.sh** from the project's directory to compile.
+On Windows use **make.bat**.
+Note that you will have to change the paths of dasm in Stella in the scripts.
