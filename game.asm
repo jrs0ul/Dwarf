@@ -215,6 +215,7 @@ cont:
     lda #0
     sta GRP0
     sta WSYNC   ;let's draw an empty line
+    sta HMOVE
 
     lda #%00000011 ;2 2
     sta NUSIZ0     ;3 5
@@ -223,7 +224,7 @@ cont:
     lda #15        ;2 10
     sta COLUP1     ;3 13
     lda #0         ;2 15
-    SLEEP 6        ;6 21
+    SLEEP 4        ;6 21
 
     sta RESP0      ;2 reset sprite pos
     sta RESP1
@@ -238,7 +239,7 @@ cont:
 
 
     ldy #PLAYERHEIGHT
-    ldx #45 ; remaining lines
+    ldx #10 ; 10 lines
 
 score_line_loop:
 
@@ -265,6 +266,51 @@ score_line_loop:
 okok:
     dex
     bne score_line_loop
+
+;----------------------------------------
+    lda #0
+    sta GRP0
+    sta WSYNC   ;let's draw an empty line
+    sta HMOVE
+
+    lda #%00000011 ;2 2
+    sta NUSIZ0     ;3 5
+    sta NUSIZ1     ;3 8
+
+    lda #65        ;2 10
+    sta COLUBK     ;3 13
+    lda #0         ;2 15
+    SLEEP 4        ;6 21
+
+    sta RESP0      ;2 reset sprite pos
+    sta RESP1
+
+    lda #$0        ;2
+    sta HMP0       ;3  reset p1 x offset
+    lda #$11       ;2  move p2 sprite left a bit
+    sta HMP1       ;3 
+
+
+    ldy #PLAYERHEIGHT
+    ldx #33 ; remaining lines
+
+score_line_loop1:
+
+    sta WSYNC
+    sta HMOVE
+    cpy #0
+    beq okok1
+    lda DWARF_GFX_0,y
+    sta GRP1
+    lda DWARF_GFX_0,y
+    sta GRP0
+    sta HMCLR   ; let's clear HM
+
+    dey
+okok1:
+    dex
+    bne score_line_loop1
+
 
     lda #0
     sta NUSIZ0
