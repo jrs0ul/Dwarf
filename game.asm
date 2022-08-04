@@ -210,21 +210,68 @@ cont:
     dex                     ;2
     bne KERNEL_LOOP ;
     
-    ;let's draw remaining scanlines
+    ;let's draw a score
     ;---------------------------------------------
-    ldx #46
     lda #0
     sta GRP0
-    lda #15
-    sta COLUPF
-    lda #%01010100
-    sta PF1
+    sta WSYNC   ;let's draw an empty line
+
+    lda #%00000011 ;2 2
+    sta NUSIZ0     ;3 5
+    sta NUSIZ1     ;3 8
+
+    lda #15        ;2 10
+    sta COLUP1     ;3 13
+    lda #0         ;2 15
+    SLEEP 6        ;6 21
+
+    sta RESP0      ;2 reset sprite pos
+    sta RESP1
+
+    sta REFP0      ;3  turn off mirroring
+    lda #$0        ;2
+    sta HMP0       ;3  reset p1 x offset
+    lda #$11       ;2  move p2 sprite left a bit
+    sta HMP1       ;3 
+    nop            ;2 
+    
+
+
+    ldy #PLAYERHEIGHT
+    ldx #45 ; remaining lines
 
 score_line_loop:
 
     sta WSYNC
+    sta HMOVE
+    cpy #0
+    beq okok
+    lda ONE_GFX,y
+    sta GRP1
+    lda ZERO_GFX,y
+    sta GRP0
+    nop
+    lda TWO_GFX,y
+    sta GRP0
+    lda TWO_GFX,y
+    sta GRP1
+    lda ZERO_GFX,y
+    sta GRP1
+    lda ONE_GFX,y
+    sta GRP0
+    sta HMCLR   ; let's clear HM
+
+    dey
+okok:
     dex
     bne score_line_loop
+
+    lda #0
+    sta NUSIZ0
+    sta NUSIZ1
+    lda #$C6
+    sta COLUP1
+
 
 
     rts
@@ -979,6 +1026,46 @@ LADDER_GFX:
     .byte %01111110
     .byte %01000010
     .byte %01000010
+
+
+ZERO_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00111100
+    .byte %01100010
+    .byte %01010010
+    .byte %01010010
+    .byte %01001010
+    .byte %01001010
+    .byte %01000110
+    .byte %00111100
+
+ONE_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %01111110
+    .byte %00011000
+    .byte %00011000
+    .byte %00011000
+    .byte %01011000
+    .byte %00111000
+    .byte %00011000
+    .byte %00001000
+
+TWO_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %01111110
+    .byte %00110000
+    .byte %00011000
+    .byte %00001100
+    .byte %00000110
+    .byte %01000110
+    .byte %01000110
+    .byte %00111100
+
+
+
 
 
 ROM_GAMEMAP0: ; only first four bits are legit
