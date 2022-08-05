@@ -4,9 +4,10 @@
 
 
 MAPSIZE = 36        ;(12 * 6) / 2
+MAPHEIGHT = 6
 PLAYERHEIGHT = 9
 LADDERHEIGHT = 11
-LINESPERCELL = 6
+LINESPERCELL = 12
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
 ;----------------------------------------------------
@@ -18,12 +19,12 @@ NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
 THEMAP          ds MAPSIZE
 
-GAMEMAP0        ds 12 
-GAMEMAP1        ds 12 
-GAMEMAP2        ds 12 
-GAMEMAP3        ds 12 
-GAMEMAP4        ds 12
-GAMEMAP5        ds 12
+GAMEMAP0        ds 6 
+GAMEMAP1        ds 6 
+GAMEMAP2        ds 6 
+GAMEMAP3        ds 6 
+GAMEMAP4        ds 6
+GAMEMAP5        ds 6
 
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
@@ -48,7 +49,7 @@ SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  123 | 5 bytes free
+;                  87 | 41 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -118,7 +119,7 @@ Kernel:
     ldy #PLAYERHEIGHT
     sty PLAYER_LINE_IDX     
 
-    lda #11
+    lda #MAPHEIGHT-1
     sta SCREENMAP_IDX ; bottom of the screenmap
 
     lda #LINESPERCELL
@@ -143,13 +144,6 @@ KERNEL_LOOP:
 
 resetTheLadder:
     ldy #LADDERHEIGHT       ; reset the ladder sprite
-    ;nop
-    ;nop
-    ;nop
-    ;nop
-    ;nop
-    ;nop
-    ;nop
     sta RESP1
 
 drawThePlayer:
@@ -678,12 +672,8 @@ store_0_1:
 
     lda TMPSCREENCELL
     sta GAMEMAP0,y
-    dey
-    sta GAMEMAP0,y
     
     lda TMPSCREENCELL1
-    sta GAMEMAP1,y
-    iny
     sta GAMEMAP1,y
 
 ;--------------------------------------------------------------
@@ -721,8 +711,6 @@ store_2_3:
     sta GAMEMAP2,y
     lda TMPSCREENCELL1
     sta GAMEMAP1,y  ; PF1
-    dey
-    sta GAMEMAP1,y
 
 ;--------------------------------------------------------------
 cell_4_5: ;------------------------
@@ -759,12 +747,7 @@ store_4_5:
 
     lda TMPSCREENCELL
     sta GAMEMAP2,y
-    iny
-    sta GAMEMAP2,y
     lda TMPSCREENCELL1
-    sta GAMEMAP3,y
-    dey
-    
     sta GAMEMAP3,y
 
 ;--------------------------------------------------------------
@@ -799,12 +782,8 @@ store_6_7:
 
     lda TMPSCREENCELL1
     sta GAMEMAP3,y
-    iny
-    sta GAMEMAP3,y
 
     lda TMPSCREENCELL
-    sta GAMEMAP4,y
-    dey
     sta GAMEMAP4,y
 
 ;--------------------------------------------------------------
@@ -843,11 +822,7 @@ store_8_9:
 
     lda TMPSCREENCELL
     sta GAMEMAP4,y  ;
-    iny
-    sta GAMEMAP4,y
     lda TMPSCREENCELL1
-    sta GAMEMAP5,y
-    dey
     sta GAMEMAP5,y
 
 
@@ -883,9 +858,7 @@ store_10_11_y0:
 
     lda TMPSCREENCELL1
     sta GAMEMAP5,y
-    iny
     sta GAMEMAP5,y
-    dey
 
     rts
 
@@ -896,7 +869,7 @@ FillScreenMap:
     ldx #0
     stx TMPSCREENCELL
     stx TMPSCREENCELL1
-    ldy #11             ;we have 2x6 = 12 rows, since we're counting from 0, it's 11
+    ldy #MAPHEIGHT-1
 
 rowloop:
 
