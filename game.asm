@@ -114,10 +114,9 @@ Kernel:
     lda #$FC
     sta COLUPF      ;brown bricks
 
-    ldy #LADDERHEIGHT
-    sty LADDER_LINE_IDX
-
+    
     ldy #PLAYERHEIGHT
+    sty PLAYER_LINE_IDX     
 
     lda #11
     sta SCREENMAP_IDX ; bottom of the screenmap
@@ -125,7 +124,8 @@ Kernel:
     lda #LINESPERCELL
     sta LINE_IDX
 
-
+    ldy #LADDERHEIGHT
+    sty LADDER_LINE_IDX
 
     ldx #72 ; scanlines, max scanlines / 2
 
@@ -133,16 +133,16 @@ Kernel:
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
-    sty PLAYER_LINE_IDX     ;3 22
-    ldy LADDER_LINE_IDX     ;3 25
-    cpy #0                  ;2 27
-    beq resetTheLadder      ;2 29
-    lda LADDER_GFX,y        ;4 33
-    sta GRP1                ;3 36
-    dey                     ;2 38
+    cpy #0                  ;2 21
+    beq resetTheLadder      ;2 23 finished drawing one ladder sprite
+
+    lda LADDER_GFX,y        ;4 
+    sta GRP1                ;3
+    dey                     ;2
     jmp drawThePlayer
+
 resetTheLadder: 
-    ldy #LADDERHEIGHT
+    ldy #LADDERHEIGHT       ; reset the ladder sprite
     sta RESP1
 
 drawThePlayer:
@@ -156,7 +156,9 @@ drawThePlayer:
     lda (PLAYERPTR),y       ;5 14    let's load a line from a sprite frame
     sta GRP0                ;3 17    and store it to the Player0 sprite
     dey                     ;2 19
+    sty PLAYER_LINE_IDX     ;3 21
 nope:
+    ldy LADDER_LINE_IDX     ;3 22
 
     ;-------------------------------------------------------------------------
 
@@ -209,17 +211,22 @@ nope:
     ;---------------------------------------------
 
     ;this probably adds up to the sprite scanline
-    bne cont                ;2
-    dec SCREENMAP_IDX       ;5  move to next map cell
-    ldx #LINESPERCELL       ;2  reset line count
+    bne cont                ;2 2
+    dec SCREENMAP_IDX       ;5 7  move to next map cell
+    ldx #LINESPERCELL       ;2 9  reset line count
 cont:
-    stx LINE_IDX            ;3  save current line count
-    ldx TEMP_X_INDEX        ;3  restore X (scanline index)
+    stx LINE_IDX            ;3 12 save current line count
+    ldx TEMP_X_INDEX        ;3 15 restore X (scanline index)
 
     ;---------------------------------------------
-    dex                     ;2
-    bne KERNEL_LOOP ;
-    
+    dex                     ;2 17
+    bne KERNEL_LOOP ;       ;2 19
+
+    ;-----------------------------------------------
+
+
+
+
     ;let's draw a score
     ;---------------------------------------------
     lda #0
