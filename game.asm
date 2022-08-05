@@ -141,8 +141,15 @@ KERNEL_LOOP:
     dey                     ;2
     jmp drawThePlayer
 
-resetTheLadder: 
+resetTheLadder:
     ldy #LADDERHEIGHT       ; reset the ladder sprite
+    ;nop
+    ;nop
+    ;nop
+    ;nop
+    ;nop
+    ;nop
+    ;nop
     sta RESP1
 
 drawThePlayer:
@@ -203,12 +210,12 @@ nope:
 
     sta PF0                 ;3 63
     sta PF1                 ;3 66
-    sta PF2                 ;3 69
     dex                     ;2 72
 
     ;---------------------------------------------
     sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
     ;---------------------------------------------
+    sta PF2                 ;3 69
 
     ;this probably adds up to the sprite scanline
     bne cont                ;2 2
@@ -632,8 +639,8 @@ DivideLoop
     asl             ;2 17
     asl             ;2 19
 
-    sta RESP0,x
     sta HMP0,x
+    sta RESP0,x
 
     rts
 
@@ -652,8 +659,10 @@ cell_0_1:
     and #%11110000
     bne nextseg0
 
-    lda #%01110000
+    lda #%10000000 ;this goes to PF0
     sta TMPSCREENCELL
+    lda #%11000000  ; PF1
+    sta TMPSCREENCELL1
 
 nextseg0:
     lda THEMAP,x
@@ -661,10 +670,8 @@ nextseg0:
     and #%00001111
     bne store_0_1
     ;
-    lda TMPSCREENCELL
-    eor #%10000000
-    sta TMPSCREENCELL
-    lda #%11000000       ;this goes to PF1
+    lda TMPSCREENCELL1
+    eor #%00111000
     sta TMPSCREENCELL1
 
 store_0_1:
@@ -684,13 +691,16 @@ cell_2_3:
 
     inx
 
+    lda #0
+    sta TMPSCREENCELL
+
     lda THEMAP,x
     eor #%00010000
     and #%11110000
     bne nextseg1
 
     lda TMPSCREENCELL1
-    eor #%00111000
+    eor #%00000111
     sta TMPSCREENCELL1
 
 nextseg1:
@@ -700,15 +710,17 @@ nextseg1:
     and #%00001111
     bne store_2_3
     ;
-    lda TMPSCREENCELL1
+    lda TMPSCREENCELL
     eor #%00000111
-    sta TMPSCREENCELL1
+    sta TMPSCREENCELL
 
 
 store_2_3:
-
+    
+    lda TMPSCREENCELL
+    sta GAMEMAP2,y
     lda TMPSCREENCELL1
-    sta GAMEMAP1,y  ; 
+    sta GAMEMAP1,y  ; PF1
     dey
     sta GAMEMAP1,y
 
@@ -717,15 +729,16 @@ cell_4_5: ;------------------------
     
     inx
 
-    lda #%00000000
-    sta TMPSCREENCELL
+    lda #0
+    sta TMPSCREENCELL1
 
     lda THEMAP,x
     eor #%00010000
     and #%11110000
     bne nextseg2
 
-    lda #%00000111
+    lda TMPSCREENCELL
+    eor #%00111000
     sta TMPSCREENCELL
 
 nextseg2:
@@ -736,8 +749,10 @@ nextseg2:
     bne store_4_5
     ;
     lda TMPSCREENCELL
-    eor #%00111000
+    eor #%11000000
     sta TMPSCREENCELL
+    lda #%00010000
+    sta TMPSCREENCELL1
 
 
 store_4_5:
@@ -746,24 +761,27 @@ store_4_5:
     sta GAMEMAP2,y
     iny
     sta GAMEMAP2,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP3,y
+    dey
+    
+    sta GAMEMAP3,y
 
 ;--------------------------------------------------------------
 cell_6_7: ;------------------------
 
     inx
 
-    lda #%00000000
-    sta TMPSCREENCELL1
+    lda #%0
+    sta TMPSCREENCELL
 
     lda THEMAP,x
     eor #%00010000
     and #%11110000
     bne nextseg3
 
-    lda TMPSCREENCELL
-    eor #%11000000
-    sta TMPSCREENCELL
-    lda #%00010000
+    lda TMPSCREENCELL1
+    eor #%11100000
     sta TMPSCREENCELL1
 
 nextseg3:
@@ -773,37 +791,37 @@ nextseg3:
     and #%00001111
     bne store_6_7
     
-    lda TMPSCREENCELL1
-    eor #%11100000
-    sta TMPSCREENCELL1
+    lda #%11100000
+    sta TMPSCREENCELL
 
 
 store_6_7:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP2,y  
-    dey
-    sta GAMEMAP2,y
 
     lda TMPSCREENCELL1
     sta GAMEMAP3,y
     iny
     sta GAMEMAP3,y
 
+    lda TMPSCREENCELL
+    sta GAMEMAP4,y
+    dey
+    sta GAMEMAP4,y
+
 ;--------------------------------------------------------------
 cell_8_9: ;------------------------
 
     inx
 
-    lda #%00000000
-    sta TMPSCREENCELL
+    lda #0
+    sta TMPSCREENCELL1
 
     lda THEMAP,x
     eor #%00010000
     and #%11110000
     bne nextseg4
 
-    lda #%11100000
+    lda TMPSCREENCELL
+    eor #%00011100
     sta TMPSCREENCELL
 
 nextseg4:
@@ -813,25 +831,30 @@ nextseg4:
     and #%00001111
     bne store_8_9
     ;
+    
     lda TMPSCREENCELL
-    eor #%00011100
+    eor #%00000011
     sta TMPSCREENCELL
+    lda #%00000001
+    sta TMPSCREENCELL1
 
 
 store_8_9:
 
     lda TMPSCREENCELL
-    sta GAMEMAP4,y  ; y = 11
-    dey
+    sta GAMEMAP4,y  ;
+    iny
     sta GAMEMAP4,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP5,y
+    dey
+    sta GAMEMAP5,y
 
 
     ;--------------------------------------------------------------
 cell_10_11: ;----------------------
 
     inx
-    lda #0
-    sta TMPSCREENCELL1
 
 
     lda THEMAP,x
@@ -839,10 +862,8 @@ cell_10_11: ;----------------------
     and #%11110000
     bne nextseg5
 
-    lda TMPSCREENCELL
-    eor #%00000011
-    sta TMPSCREENCELL
-    lda #%00000001
+    lda TMPSCREENCELL1
+    eor #%00001110
     sta TMPSCREENCELL1
 
 nextseg5:
@@ -853,21 +874,18 @@ nextseg5:
     bne store_10_11_y0
     ;
     lda TMPSCREENCELL1
-    eor #%00001110
+    eor #%01110000
     sta TMPSCREENCELL1
 
     
 
 store_10_11_y0:
 
-    lda TMPSCREENCELL
-    sta GAMEMAP4,y  ; y = 10
-    iny
-    sta GAMEMAP4,y
     lda TMPSCREENCELL1
     sta GAMEMAP5,y
-    dey
+    iny
     sta GAMEMAP5,y
+    dey
 
     rts
 
@@ -892,72 +910,6 @@ rowloop:
 
     rts
 
-;----------------------------------
-
-FillScreenMapWithRomData:
-    ldx #11
-rep0:
-    lda ROM_GAMEMAP0,x
-    sta GAMEMAP0,x
-    dex
-    bne rep0
-
-    lda ROM_GAMEMAP0,0
-    sta GAMEMAP0,0
-
-    ldx #11
-rep1:
-    lda ROM_GAMEMAP1,x
-    sta GAMEMAP1,x
-    dex
-    bne rep1
-
-    lda ROM_GAMEMAP1,0
-    sta GAMEMAP1,0
-
-    ldx #11
-rep2:
-    lda ROM_GAMEMAP2,x
-    sta GAMEMAP2,x
-    dex
-    bne rep2
-
-    lda ROM_GAMEMAP2,0
-    sta GAMEMAP2,0
-
-    ldx #11
-rep3:
-    lda ROM_GAMEMAP3,x
-    sta GAMEMAP3,x
-    dex
-    bne rep3
-
-    lda ROM_GAMEMAP3,0
-    sta GAMEMAP3,0
-
-    ldx #11
-rep4:
-    lda ROM_GAMEMAP4,x
-    sta GAMEMAP4,x
-    dex
-    bne rep4
-
-
-    lda ROM_GAMEMAP4,0
-    sta GAMEMAP4,0
-
-
-    ldx #11
-rep5:
-    lda ROM_GAMEMAP5,x
-    sta GAMEMAP5,x
-    dex
-    bne rep5
-
-    lda ROM_GAMEMAP5,0
-    sta GAMEMAP5,0
-
-    rts
 ;--------------------------
 GenerateMap:
 
@@ -1128,96 +1080,6 @@ TWO_GFX:
     .byte %01000110
     .byte %00111100
 
-
-
-
-
-ROM_GAMEMAP0: ; only first four bits are legit
-    .byte %00001110
-    .byte %00001111
-    .byte %00001111
-    .byte %00001011
-    .byte %11111111
-    .byte %11111111
-    .byte %11101111
-    .byte %11101111
-    .byte %11101111
-    .byte %01011111
-    .byte %01011111
-    .byte %10111111
-
-
-ROM_GAMEMAP1:
-    .byte %00000100
-    .byte %00001110
-    .byte %00001010
-    .byte %00001010
-    .byte %11111111
-    .byte %11111111
-    .byte %11110110
-    .byte %01110101
-    .byte %01110100
-    .byte %10101101
-    .byte %10101110
-    .byte %11011111
-
-
-ROM_GAMEMAP2:
-    .byte %01010101
-    .byte %00110111
-    .byte %01010101
-    .byte %00100010
-    .byte %11111111
-    .byte %11111111
-    .byte %11110100
-    .byte %01110111
-    .byte %01110100
-    .byte %10101111
-    .byte %11011100
-    .byte %11111111
-
-
-ROM_GAMEMAP3: ; only 4 first bits are legit
-    .byte %11101110
-    .byte %11001111
-    .byte %11001111
-    .byte %11101011
-    .byte %11111111
-    .byte %11111111
-    .byte %01110110
-    .byte %01110101
-    .byte %01110100
-    .byte %10101101
-    .byte %11011110
-    .byte %11111111
-
-ROM_GAMEMAP4:
-    .byte %11101110
-    .byte %11011101
-    .byte %11011111
-    .byte %11111011
-    .byte %11111111
-    .byte %11111111
-    .byte %11000100
-    .byte %10111101
-    .byte %10001101
-    .byte %10111101
-    .byte %11000101
-    .byte %11111111
-
-ROM_GAMEMAP5:
-    .byte %11101110
-    .byte %11011101
-    .byte %11011111
-    .byte %11111011
-    .byte %11111111
-    .byte %11111111
-    .byte %11110000
-    .byte %11110111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
-    .byte %11111111
 
 
 
