@@ -5,6 +5,7 @@
 
 MAPSIZE = 36        ;(12 * 6) / 2
 PLAYERHEIGHT = 9
+LADDERHEIGHT = 11
 LINESPERCELL = 6
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
@@ -66,7 +67,7 @@ Reset:
     lda #3
     sta PLAYERX
 
-    lda #3
+    lda #140
     sta LADDERX
 
 
@@ -113,9 +114,10 @@ Kernel:
     lda #$FC
     sta COLUPF      ;brown bricks
 
-    ldy #PLAYERHEIGHT
-
+    ldy #LADDERHEIGHT
     sty LADDER_LINE_IDX
+
+    ldy #PLAYERHEIGHT
 
     lda #11
     sta SCREENMAP_IDX ; bottom of the screenmap
@@ -124,11 +126,28 @@ Kernel:
     sta LINE_IDX
 
 
+
     ldx #72 ; scanlines, max scanlines / 2
 
-KERNEL_LOOP:
+    ;sta WSYNC
 
+KERNEL_LOOP:
     ;------------------------------------------------------------------------
+    sty PLAYER_LINE_IDX     ;3 22
+    ldy LADDER_LINE_IDX     ;3 25
+    cpy #0                  ;2 27
+    beq resetTheLadder      ;2 29
+    lda LADDER_GFX,y        ;4 33
+    sta GRP1                ;3 36
+    dey                     ;2 38
+    jmp drawThePlayer
+resetTheLadder: 
+    ldy #LADDERHEIGHT
+    sta RESP1
+
+drawThePlayer:
+    sty LADDER_LINE_IDX     ;3 41
+    ldy PLAYER_LINE_IDX     ;3 44
     cpx PLAYERY             ;3 3     can we draw the player sprite?
     bcs nope                ;2 5     < PLAYERY
     cpy #0                  ;2 7     we already went through all sprite lines
@@ -138,16 +157,7 @@ KERNEL_LOOP:
     sta GRP0                ;3 17    and store it to the Player0 sprite
     dey                     ;2 19
 nope:
-    sty PLAYER_LINE_IDX     ;3 22
-    ldy LADDER_LINE_IDX     ;3 25
-    cpy #0
-    beq nextsprite
-    lda LADDER_GFX,y        ;4 29
-    sta GRP1                ;3 32
-    dey                     ;2 34
-nextsprite:
-    sty LADDER_LINE_IDX     ;3 43
-    ldy PLAYER_LINE_IDX     ;3 46
+
     ;-------------------------------------------------------------------------
 
     sta WSYNC           ;wait for the scanline to be drawn
@@ -189,17 +199,17 @@ nextsprite:
     lda #0                  ;2 58   Lets turn off the playfield for one scanline
     ldx LINE_IDX            ;3 61   decrement current line count for one map cell
 
-    dex                     ;2 63
-    sta PF0                 ;3 66
-    sta PF1                 ;3 69
-    sta PF2                 ;3 72
+    sta PF0                 ;3 63
+    sta PF1                 ;3 66
+    sta PF2                 ;3 69
+    dex                     ;2 72
 
     ;---------------------------------------------
     sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
     ;---------------------------------------------
 
     ;this probably adds up to the sprite scanline
-    bne cont
+    bne cont                ;2
     dec SCREENMAP_IDX       ;5  move to next map cell
     ldx #LINESPERCELL       ;2  reset line count
 cont:
@@ -311,8 +321,8 @@ okok1:
     dex
     bne score_line_loop1
 
-
     lda #0
+    sta COLUBK
     sta NUSIZ0
     sta NUSIZ1
     lda #$C6
@@ -963,10 +973,9 @@ VBlank:
     sta WSYNC
     sta HMOVE
 
-    lda LADDERX
-    ldx #1
-    jsr PosSpriteX
-    sta HMOVE
+    ;lda LADDERX
+    ;ldx #1
+    ;jsr PosSpriteX
 
 ;    ldx SCREEN_FRAME
 ;    inx
@@ -1064,6 +1073,7 @@ DWARF_GFX_3:
 LADDER_GFX:
     .byte %00000000
     .byte %00000000
+    .byte %00000000
     .byte %01000010
     .byte %01111110
     .byte %01000010
@@ -1071,6 +1081,7 @@ LADDER_GFX:
     .byte %01000010
     .byte %01111110
     .byte %01000010
+    .byte %01111110
     .byte %01000010
 
 
