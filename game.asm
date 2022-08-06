@@ -8,6 +8,11 @@ MAPHEIGHT = 6
 PLAYERHEIGHT = 9
 LADDERHEIGHT = 11
 LINESPERCELL = 12
+
+LADDERONLEFT = %00100001  ;0010 - ladder, 0001 - wall
+LADDERONRIGHT = %00010010
+
+
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
 ;----------------------------------------------------
@@ -936,131 +941,34 @@ genloop:
     dex
     bne genloop
 
+    ldy #0
     ;----------
+ladderLoop:                     ;  let's generate a ladder for each of the map rows
     jsr UpdateRandomNumber
-    and #11
-    ;lda #0 ;where the ladder should go
-    tax
+    and #11                     ;  limit to 0..11 range
+    tax                         ;  and transfer to X register
     lda LADDER_X_POSSITIONS,x
-    sta LADDER1X
-    txa
+    sta LADDER1X,y              ;  store sprite position to ram variable
+    txa                         ;  transfer ladder cell position back to A
 
-    lsr
-    bcs secondSeg1
+    lsr                         ;  cell number / 2
+    bcs secondSeg               ;  we have a modulus, that means it's a second segment
     clc
-    adc #6
+    adc MAP_ROW_STARTS_AT,y+1   ;  add value from the table
     tax
-    lda #%00000001
-    jmp changeCell1
-secondSeg1:
+    lda #LADDERONLEFT
+    jmp storeLadderToMap
+secondSeg:
     clc
-    adc #6
+    adc MAP_ROW_STARTS_AT,y+1
     tax
-    lda #%00010000
-changeCell1:
+    lda #LADDERONRIGHT
+storeLadderToMap:
     sta THEMAP,x
 
-    ;---------------
-    jsr UpdateRandomNumber
-    and #11
-    ;lda #0 ;where the ladder should go
-    tax
-    lda LADDER_X_POSSITIONS,x
-    sta LADDER2X
-    txa
-
-    lsr
-    bcs secondSeg2
-    clc
-    adc #12
-    tax
-    lda #%00000001
-    jmp changeCell2
-secondSeg2:
-    clc
-    adc #12
-    tax
-    lda #%00010000
-changeCell2:
-    sta THEMAP,x
-
-    ;------------
-    jsr UpdateRandomNumber
-    and #11
-    ;lda #10 ;where the ladder should go
-    tax
-    lda LADDER_X_POSSITIONS,x
-    sta LADDER3X
-    txa
-
-    lsr
-    bcs secondSeg3
-    clc
-    adc #18
-    tax
-    lda #%00000001
-    jmp changeCell3
-secondSeg3:
-    clc
-    adc #18
-    tax
-    lda #%00010000
-changeCell3:
-    sta THEMAP,x
-
-    ;--------------
-    jsr UpdateRandomNumber
-    and #11
-    ;lda #5 ;where the ladder should go
-    tax
-    lda LADDER_X_POSSITIONS,x
-    sta LADDER4X
-    txa
-
-
-    lsr
-    bcs secondSeg4
-    clc
-    adc #24
-    tax
-    lda #%00000001
-    jmp changeCell4
-secondSeg4:
-    clc
-    adc #24
-    tax
-    lda #%00010000
-changeCell4:
-    sta THEMAP,x
-
-    ;------------
-    jsr UpdateRandomNumber
-    and #11
-    ;lda #4 ;where the ladder should go
-    tax
-    lda LADDER_X_POSSITIONS,x
-    sta LADDER5X
-    txa
-
-
-    lsr
-    bcs secondSeg5
-    clc
-    adc #30
-    tax
-    lda #%00000001
-    jmp changeCell5
-secondSeg5:
-    clc
-    adc #30
-    tax
-    lda #%00010000
-changeCell5:
-    sta THEMAP,x
-
-
-
-    
+    iny
+    cpy #5
+    bne ladderLoop
 
     rts
 
@@ -1252,6 +1160,9 @@ LADDER_X_POSSITIONS: ;x positions for ladder sprites based on the location in th
     .byte 108
     .byte 120
     .byte 132
+
+MAP_ROW_STARTS_AT:
+    .byte 0,6,12,18,24,30
 
 
     ;------------------------------------------
