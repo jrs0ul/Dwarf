@@ -26,11 +26,17 @@ GAMEMAP3        ds 6
 GAMEMAP4        ds 6
 GAMEMAP5        ds 6
 
+LADDER1X        ds 1
+LADDER2X        ds 1
+LADDER3X        ds 1
+LADDER4X        ds 1
+LADDER5X        ds 1
+LADDER_IDX      ds 1
+
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
 
 PLAYER_DIR      ds 1  ; Player's direction
-LADDERX         ds 1
 
 INPUT           ds 1  ; Input from the joystick
 TEMP_X_INDEX    ds 1  ; Temp variable used in drawing, and in input checking
@@ -49,7 +55,7 @@ SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  87 | 41 bytes free
+;                  92 | 36 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -68,8 +74,16 @@ Reset:
     lda #3
     sta PLAYERX
 
-    lda #140
-    sta LADDERX
+    lda #10
+    sta LADDER1X
+    lda #30
+    sta LADDER2X
+    lda #50
+    sta LADDER3X
+    lda #80
+    sta LADDER4X
+    lda #100
+    sta LADDER1X
 
 
     lda #%00011000
@@ -79,6 +93,7 @@ Reset:
 
     lda #0
     sta SCREEN_FRAME
+    sta LADDER_IDX
 
 
     
@@ -111,6 +126,7 @@ Kernel:
 
     lda #0
     sta COLUBK      ;set X as the background color
+    sta LADDER_IDX
 
     lda #$FC
     sta COLUPF      ;brown bricks
@@ -128,6 +144,7 @@ Kernel:
     ldy #LADDERHEIGHT
     sty LADDER_LINE_IDX
 
+
     ldx #72 ; scanlines, max scanlines / 2
 
     ;sta WSYNC
@@ -135,16 +152,12 @@ Kernel:
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
     cpy #0                  ;2 21
-    beq resetTheLadder      ;2 23 finished drawing one ladder sprite
+    beq drawThePlayer       ;2 23 finished drawing one ladder sprite
 
     lda LADDER_GFX,y        ;4 
     sta GRP1                ;3
     dey                     ;2
-    jmp drawThePlayer
-
-resetTheLadder:
-    ldy #LADDERHEIGHT       ; reset the ladder sprite
-    sta RESP1
+    sta HMCLR
 
 drawThePlayer:
     sty LADDER_LINE_IDX     ;3 41
@@ -209,12 +222,28 @@ nope:
     ;---------------------------------------------
     sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
     ;---------------------------------------------
-    sta PF2                 ;3 69
+    sta PF2                 ;3 3  clearing the remaining playfield register
+    bne cont                ;2 5
 
-    ;this probably adds up to the sprite scanline
-    bne cont                ;2 2
-    dec SCREENMAP_IDX       ;5 7  move to next map cell
-    ldx #LINESPERCELL       ;2 9  reset line count
+    ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
+    ldx LADDER_IDX          ;3 10
+    lda LADDER_CONSTS,x     ;4 14
+    sec                     ;2 16
+divLoop:                
+    sbc #15                 ;
+    bcs divLoop             ;
+    ;eor #7
+    asl                     ;
+    asl                     ;
+    sta RESP1
+    sta HMP1
+
+    sta WSYNC
+    sta HMOVE
+    ;---------------------------------------------
+    inc LADDER_IDX          ;let's position next ladder
+    dec SCREENMAP_IDX       ;5 10  move to next map cell
+    ldx #LINESPERCELL       ;2  reset line count
 cont:
     stx LINE_IDX            ;3 12 save current line count
     ldx TEMP_X_INDEX        ;3 15 restore X (scanline index)
@@ -310,9 +339,9 @@ okok:
 
 
     ldy #PLAYERHEIGHT
-    ldx #33 ; remaining lines
+    ldx #27 ; remaining lines
 
-score_line_loop1:
+lives_bar_loop:
 
     sta WSYNC
     sta HMOVE
@@ -327,7 +356,7 @@ score_line_loop1:
     dey
 okok1:
     dex
-    bne score_line_loop1
+    bne lives_bar_loop
 
     lda #0
     sta COLUBK
@@ -905,9 +934,6 @@ VBlank:
     sta WSYNC
     sta HMOVE
 
-    ;lda LADDERX
-    ;ldx #1
-    ;jsr PosSpriteX
 
 ;    ldx SCREEN_FRAME
 ;    inx
@@ -949,6 +975,13 @@ DWARF_PTR_HIGH: ; high 8bits of 16bit address
     .byte >(DWARF_GFX_1)
     .byte >(DWARF_GFX_2)
     .byte >(DWARF_GFX_3)
+
+LADDER_CONSTS:
+    .byte 8
+    .byte 40
+    .byte 70
+    .byte 100
+    .byte 131
 
 
 DWARF_GFX_0:
