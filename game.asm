@@ -74,16 +74,16 @@ Reset:
     lda #3
     sta PLAYERX
 
-    lda #10
+    lda #0
     sta LADDER1X
-    lda #30
+    lda #5
     sta LADDER2X
-    lda #50
+    lda #6
     sta LADDER3X
-    lda #80
+    lda #114
     sta LADDER4X
-    lda #100
-    sta LADDER1X
+    lda #132
+    sta LADDER5X
 
 
     lda #%00011000
@@ -218,26 +218,26 @@ nope:
     sta PF0                 ;3 63
     sta PF1                 ;3 66
     dex                     ;2 72
-
     ;---------------------------------------------
     sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
     ;---------------------------------------------
     sta PF2                 ;3 3  clearing the remaining playfield register
     bne cont                ;2 5
 
-    ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
-    ldx LADDER_IDX          ;3 10
-    lda LADDER_CONSTS,x     ;4 14
-    sec                     ;2 16
-divLoop:                
-    sbc #15                 ;
-    bcs divLoop             ;
-    ;eor #7
-    asl                     ;
-    asl                     ;
+    ldx LADDER_IDX          ;3 8
+    lda LADDER1X,x          ;4 12
+    sec                     ;2 14
+divLoop:
+    sbc #15                 ;2 14
+    bcs divLoop             ;3 17
+
+    tay                     ;2 18
+    lda FINE_ADJUST_TABLE,y ;4 22
+
     sta RESP1
     sta HMP1
 
+    ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
     sta WSYNC
     sta HMOVE
     ;---------------------------------------------
@@ -976,13 +976,6 @@ DWARF_PTR_HIGH: ; high 8bits of 16bit address
     .byte >(DWARF_GFX_2)
     .byte >(DWARF_GFX_3)
 
-LADDER_CONSTS:
-    .byte 8
-    .byte 40
-    .byte 70
-    .byte 100
-    .byte 131
-
 
 DWARF_GFX_0:
     .byte %00000000
@@ -1086,6 +1079,25 @@ TWO_GFX:
     .byte %01000110
     .byte %00111100
 
+
+FINE_ADJUST_BEGIN:      ;HMPx sprite movement lookup table
+    .byte %01110000; Left 7 
+    .byte %01100000; Left 6
+    .byte %01010000; Left 5
+    .byte %01000000; Left 4
+    .byte %00110000; Left 3
+    .byte %00100000; Left 2
+    .byte %00010000; Left 1
+    .byte %00000000; No movement.
+    .byte %11110000; Right 1
+    .byte %11100000; Right 2
+    .byte %11010000; Right 3
+    .byte %11000000; Right 4
+    .byte %10110000; Right 5
+    .byte %10100000; Right 6
+    .byte %10010000; Right 7
+
+FINE_ADJUST_TABLE EQU FINE_ADJUST_BEGIN - %11110001; %11110001 = -15
 
 
 
