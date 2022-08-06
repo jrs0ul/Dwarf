@@ -48,6 +48,8 @@ TMPSCREENCELL:        ;temporary variable for fillscreenmap
 LINE_IDX:             ; line counter for a map cell
                 ds 1
 
+RANDOM          ds 1  ;random 8bit number
+
 PLAYERPTR       ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME    ds 1  ;frame index
 TMPNUM          ds 1
@@ -55,7 +57,7 @@ SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  92 | 36 bytes free
+;                  93 | 35 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -71,6 +73,7 @@ Reset:
     ;set player coordinates
     lda #69
     sta PLAYERY
+    sta RANDOM
     lda #3
     sta PLAYERX
 
@@ -481,7 +484,6 @@ moveLeft:
     sta PLAYER_DIR
 
     lda PLAYERX
-    ;sbc #1
     adc #1
     cmp #2
     bcc checkDown
@@ -538,7 +540,7 @@ checkDown:
     bcs checkUp
 moveDown:
     lda PLAYERY
-    sbc 1
+    sbc #1
     cmp #9
     bcc checkUp
     sta PLAYERY
@@ -547,16 +549,16 @@ moveDown:
 checkUp:
     lda INPUT
     asl
-    bcs exit
+    bcs checkButton
     lda PLAYERY
-    adc 1
+    adc #1
     cmp #72
-    bcs exit
+    bcs checkButton
     sta PLAYERY
     lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
     sta PLAYER_FRAME
-exit:
-    ;----------------------------------------------
+checkButton:
+;----------------------------------------------
     bit INPT4   ;checking button press;
     bmi buttonNotPressed ;jump if the button wasn't pressed
     ;----
@@ -576,14 +578,14 @@ checkCellCollision:
     jsr GetActiveMapCell
 
     lsr
-    bcs secondsegmentmined
+    bcs secondSegmentMined
     adc TMPNUM
     tax
     dex
     lda THEMAP,x
     and #%11110000
     jmp changemap
-secondsegmentmined:
+secondSegmentMined:
     adc TMPNUM
     tax
     dex
@@ -912,7 +914,19 @@ rowloop:
 
     rts
 
-;--------------------------
+;------------------------
+UpdateRandomNumber:
+
+    lda RANDOM
+    lsr 
+    bcc noeor
+    eor #$B4
+noeor:
+    sta RANDOM
+
+    rts
+
+;-------------------------
 GenerateMap:
 
     ldx #MAPSIZE
@@ -921,7 +935,133 @@ genloop:
     sta THEMAP,x
     dex
     bne genloop
+
+    ;----------
+    jsr UpdateRandomNumber
+    and #11
+    ;lda #0 ;where the ladder should go
+    tax
+    lda LADDER_X_POSSITIONS,x
+    sta LADDER1X
+    txa
+
+    lsr
+    bcs secondSeg1
+    clc
+    adc #6
+    tax
+    lda #%00000001
+    jmp changeCell1
+secondSeg1:
+    clc
+    adc #6
+    tax
+    lda #%00010000
+changeCell1:
+    sta THEMAP,x
+
+    ;---------------
+    jsr UpdateRandomNumber
+    and #11
+    ;lda #0 ;where the ladder should go
+    tax
+    lda LADDER_X_POSSITIONS,x
+    sta LADDER2X
+    txa
+
+    lsr
+    bcs secondSeg2
+    clc
+    adc #12
+    tax
+    lda #%00000001
+    jmp changeCell2
+secondSeg2:
+    clc
+    adc #12
+    tax
+    lda #%00010000
+changeCell2:
+    sta THEMAP,x
+
+    ;------------
+    jsr UpdateRandomNumber
+    and #11
+    ;lda #10 ;where the ladder should go
+    tax
+    lda LADDER_X_POSSITIONS,x
+    sta LADDER3X
+    txa
+
+    lsr
+    bcs secondSeg3
+    clc
+    adc #18
+    tax
+    lda #%00000001
+    jmp changeCell3
+secondSeg3:
+    clc
+    adc #18
+    tax
+    lda #%00010000
+changeCell3:
+    sta THEMAP,x
+
+    ;--------------
+    jsr UpdateRandomNumber
+    and #11
+    ;lda #5 ;where the ladder should go
+    tax
+    lda LADDER_X_POSSITIONS,x
+    sta LADDER4X
+    txa
+
+
+    lsr
+    bcs secondSeg4
+    clc
+    adc #24
+    tax
+    lda #%00000001
+    jmp changeCell4
+secondSeg4:
+    clc
+    adc #24
+    tax
+    lda #%00010000
+changeCell4:
+    sta THEMAP,x
+
+    ;------------
+    jsr UpdateRandomNumber
+    and #11
+    ;lda #4 ;where the ladder should go
+    tax
+    lda LADDER_X_POSSITIONS,x
+    sta LADDER5X
+    txa
+
+
+    lsr
+    bcs secondSeg5
+    clc
+    adc #30
+    tax
+    lda #%00000001
+    jmp changeCell5
+secondSeg5:
+    clc
+    adc #30
+    tax
+    lda #%00010000
+changeCell5:
+    sta THEMAP,x
+
+
+
     
+
     rts
 
 
@@ -1099,6 +1239,19 @@ FINE_ADJUST_BEGIN:      ;HMPx sprite movement lookup table
 
 FINE_ADJUST_TABLE EQU FINE_ADJUST_BEGIN - %11110001; %11110001 = -15
 
+LADDER_X_POSSITIONS: ;x positions for ladder sprites based on the location in the map row
+    .byte 0
+    .byte 12
+    .byte 24
+    .byte 36
+    .byte 48
+    .byte 60
+    .byte 72
+    .byte 84
+    .byte 96
+    .byte 108
+    .byte 120
+    .byte 132
 
 
     ;------------------------------------------
