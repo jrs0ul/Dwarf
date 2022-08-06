@@ -994,8 +994,6 @@ VBlank:
  ;   stx SCREEN_FRAME
 
     jsr FillScreenMap
-    ;jsr FillScreenMapWithRomData
-
 
     ;set the frame for the sprite
     lda PLAYER_FRAME
