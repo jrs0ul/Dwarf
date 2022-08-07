@@ -64,7 +64,7 @@ SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  93 | 35 bytes free
+;                  94 | 34 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -394,7 +394,7 @@ Overscan:
     jsr ProcessInput
 
     ldy SCREEN_FRAME
-    iny
+    ;iny
     cpy #2
     bne continueOverscan
     ldy #0
@@ -1134,11 +1134,15 @@ noeor:
 GenerateMap:
 
     ldx #MAPSIZE
-    lda #%01000001
+    lda #%00010001
 genloop:
     sta THEMAP,x
     dex
     bne genloop
+
+    ;ldx #5
+    ;lda #%01000100
+    ;sta THEMAP,x
 
     ldy #0
     ;----------
@@ -1183,7 +1187,7 @@ VBlank:
 
 
     ldx SCREEN_FRAME
-    cpx #0
+    cpx #1
     beq lavaFill
     ;--------------- filling screen map with ground tiles
     lda #$FC        ;brown bricks
