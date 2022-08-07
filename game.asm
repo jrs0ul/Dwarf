@@ -43,6 +43,10 @@ TILECOLOR       ds 1
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
 
+OLDPLAYERY      ds 1
+OLDPLAYERX      ds 1
+OLDPLAYER_FRAME  ds 1
+
 PLAYER_DIR      ds 1  ; Player's direction
 
 INPUT           ds 1  ; Input from the joystick
@@ -64,7 +68,7 @@ SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
 ;------------------------------------------------------
-;                  94 | 34 bytes free
+;                  96 | 32 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -80,9 +84,11 @@ Reset:
     ;set player coordinates
     lda #69
     sta PLAYERY
+    sta OLDPLAYERY
     sta RANDOM
     lda #3
     sta PLAYERX
+    sta OLDPLAYERX
 
     lda #0
     sta LADDER1X
@@ -389,6 +395,20 @@ Overscan:
     sta TIM64T
 
     ;some game logic here
+    
+
+    bit CXP0FB
+    bpl notColliding
+    lda OLDPLAYERX
+    sta PLAYERX
+    lda OLDPLAYERY
+    sta PLAYERY
+    lda OLDPLAYER_FRAME
+    sta PLAYER_FRAME
+
+
+notColliding:
+    sta CXCLR
 
     
     jsr ProcessInput
@@ -436,61 +456,35 @@ moveRight:
     lda #1
     sta PLAYER_DIR
     lda PLAYERX
-    adc #6
+    clc
+    adc #1
     cmp #140
     bcs checkLeft
+  
+    ldx PLAYERX
+    stx OLDPLAYERX
     sta PLAYERX
-
-
-    ;-------------Let's check the collision
-    jsr GetActiveMapCell
-
-    lsr 
-    bcs secondsegRight
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    beq revertRight
-    jmp walkRight
-secondsegRight:
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    beq revertRight
-    jmp walkRight
-revertRight ; need to revert x that was used for collision check
-    lda PLAYERX
-    sec
-    sbc #6
-    sta PLAYERX
-    jmp exitRightCollisionCheck
-
-walkRight:
-
-    lda PLAYERX
-    sec
-    sbc #5
-    sta PLAYERX
-
-exitRightCollisionCheck:
-    ;------------
-
+   
     lda #%00000000
-    sta REFP0
+    ;sta REFP0
+
     ldx PLAYER_FRAME
     inx
     cpx #16 ;we must not let go to animation frame 3, 00010 000
     bcc storeframe1
     ldx #0
 storeframe1:
+    lda PLAYER_FRAME
+    sta OLDPLAYER_FRAME
     stx PLAYER_FRAME
 
+    ;so left was activated, let's skip right direction
+    lda INPUT
+    asl
+    sta INPUT
+    jmp checkButton
+
+    
 
 checkLeft:
     lda INPUT
@@ -502,54 +496,29 @@ moveLeft:
     sta PLAYER_DIR
 
     lda PLAYERX
-    adc #1
-    cmp #2
-    bcc checkDown
-    sta PLAYERX
-    ;-------------Let's check the collision
-    jsr GetActiveMapCell
-    lsr 
-    bcs twosegLeft
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    beq revertLeft
-    jmp walkleft
-twosegLeft:
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    beq revertLeft
-    jmp walkleft
-revertLeft
-    lda PLAYERX
     sec
     sbc #1
+    cmp #2
+    bcc checkDown
+    ldx PLAYERX
+    stx OLDPLAYERX
     sta PLAYERX
-    jmp exitLeftColisionCheck
+       ;----------
 
-walkleft:
-    lda PLAYERX
-    sec
-    sbc #2
-    sta PLAYERX
-exitLeftColisionCheck:
-    ;----------
     lda #%00001000
-    sta REFP0
+    ;sta REFP0
+
     ldx PLAYER_FRAME
     inx
     cpx #16 ;we must not let go to animation frame 3, 00010 000
     bcc storeframe2
     ldx #0
 storeframe2:
+    lda PLAYER_FRAME
+    sta OLDPLAYER_FRAME
     stx PLAYER_FRAME
+
+    jmp checkButton
 
 checkDown:
     lda INPUT
@@ -558,11 +527,16 @@ checkDown:
     bcs checkButton
 moveDown:
     lda PLAYERY
+    sec
     sbc #1
     cmp #9
     bcc checkButton
+    ldx PLAYERY
+    stx OLDPLAYERY
     sta PLAYERY
     lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
+    ldx PLAYER_FRAME
+    stx OLDPLAYER_FRAME
     sta PLAYER_FRAME
 checkButton:
 ;----------------------------------------------
@@ -611,6 +585,7 @@ changemap:
     sta PLAYERX
 
 buttonNotPressed:
+
     
     rts
 ;-------------------------------------
