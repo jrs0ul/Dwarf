@@ -22,12 +22,12 @@ NO_ILLEGAL_OPCODES = 1 ; DASM needs it
     ORG $80
 
 
-THEMAP          ds MAPSIZE
+THEMAP          ds MAPSIZE ; logical map
 
-GAMEMAP0        ds 6 
-GAMEMAP1        ds 6 
-GAMEMAP2        ds 6 
-GAMEMAP3        ds 6 
+GAMEMAP0        ds 6  ;screen map
+GAMEMAP1        ds 6
+GAMEMAP2        ds 6
+GAMEMAP3        ds 6
 GAMEMAP4        ds 6
 GAMEMAP5        ds 6
 
@@ -37,6 +37,8 @@ LADDER3X        ds 1
 LADDER4X        ds 1
 LADDER5X        ds 1
 LADDER_IDX      ds 1
+
+TILECOLOR       ds 1
 
 PLAYERY         ds 1  ; Player's Y position
 PLAYERX         ds 1  ; Player's X position
@@ -136,8 +138,6 @@ Kernel:
     sta COLUBK      ;set X as the background color
     sta LADDER_IDX
 
-    lda #$FC
-    sta COLUPF      ;brown bricks
 
     
     ldy #PLAYERHEIGHT
@@ -151,6 +151,10 @@ Kernel:
 
     ldy #LADDERHEIGHT
     sty LADDER_LINE_IDX
+
+
+    lda TILECOLOR
+    sta COLUPF      ;3 brown bricks
 
 
     ldx #72 ; scanlines, max scanlines / 2
@@ -386,7 +390,17 @@ Overscan:
 
     ;some game logic here
 
+    
     jsr ProcessInput
+
+    ldy SCREEN_FRAME
+    iny
+    cpy #2
+    bne continueOverscan
+    ldy #0
+continueOverscan:
+    sty SCREEN_FRAME
+
 
     
 OverscanLoop:
@@ -478,7 +492,6 @@ storeframe1:
     stx PLAYER_FRAME
 
 
-
 checkLeft:
     lda INPUT
     asl
@@ -542,23 +555,12 @@ checkDown:
     lda INPUT
     asl
     sta INPUT
-    bcs checkUp
+    bcs checkButton
 moveDown:
     lda PLAYERY
     sbc #1
     cmp #9
-    bcc checkUp
-    sta PLAYERY
-    lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
-    sta PLAYER_FRAME
-checkUp:
-    lda INPUT
-    asl
-    bcs checkButton
-    lda PLAYERY
-    adc #1
-    cmp #72
-    bcs checkButton
+    bcc checkButton
     sta PLAYERY
     lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
     sta PLAYER_FRAME
@@ -673,6 +675,228 @@ DivideLoop
     sta RESP0,x
 
     rts
+;-----------------------------------------
+;Fills a row from the logic map to the screenmap
+Fill_ScreenMaps_Lava_row:
+
+lava_cell_0_1: 
+
+    lda #%00000000
+    sta TMPSCREENCELL
+    sta TMPSCREENCELL1
+
+    lda THEMAP,x
+    eor #%01000000
+    and #%11110000
+    bne lava_nextseg0
+
+    lda #%10000000 ;this goes to PF0
+    sta TMPSCREENCELL
+    lda #%11000000  ; PF1
+    sta TMPSCREENCELL1
+
+lava_nextseg0:
+    lda THEMAP,x
+    eor #%00000100
+    and #%00001111
+    bne lava_store_0_1
+    ;
+    lda TMPSCREENCELL1
+    eor #%00111000
+    sta TMPSCREENCELL1
+
+lava_store_0_1:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP0,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP1,y
+
+;--------------------------------------------------------------
+lava_cell_2_3: 
+
+    inx
+
+    lda #0
+    sta TMPSCREENCELL
+
+    lda THEMAP,x
+    eor #%01000000
+    and #%11110000
+    bne lava_nextseg1
+
+    lda TMPSCREENCELL1
+    eor #%00000111
+    sta TMPSCREENCELL1
+
+lava_nextseg1:
+
+    lda THEMAP,x
+    eor #%00000100
+    and #%00001111
+    bne lava_store_2_3
+    ;
+    lda TMPSCREENCELL
+    eor #%00000111
+    sta TMPSCREENCELL
+
+
+lava_store_2_3:
+    
+    lda TMPSCREENCELL
+    sta GAMEMAP2,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP1,y  ; PF1
+
+;--------------------------------------------------------------
+lava_cell_4_5: ;------------------------
+    
+    inx
+
+    lda #0
+    sta TMPSCREENCELL1
+
+    lda THEMAP,x
+    eor #%01000000
+    and #%11110000
+    bne lava_nextseg2
+
+    lda TMPSCREENCELL
+    eor #%00111000
+    sta TMPSCREENCELL
+
+lava_nextseg2:
+
+    lda THEMAP,x
+    eor #%00000101
+    and #%00001111
+    bne lava_store_4_5
+    ;
+    lda TMPSCREENCELL
+    eor #%11000000
+    sta TMPSCREENCELL
+    lda #%00010000
+    sta TMPSCREENCELL1
+
+
+lava_store_4_5:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP2,y
+    lda TMPSCREENCELL1
+    sta GAMEMAP3,y
+
+;--------------------------------------------------------------
+lava_cell_6_7: ;------------------------
+
+    inx
+
+    lda #%0
+    sta TMPSCREENCELL
+
+    lda THEMAP,x
+    eor #%01000000
+    and #%11110000
+    bne lava_nextseg3
+
+    lda TMPSCREENCELL1
+    eor #%11100000
+    sta TMPSCREENCELL1
+
+lava_nextseg3:
+
+    lda THEMAP,x
+    eor #%00000100
+    and #%00001111
+    bne lava_store_6_7
+    
+    lda #%11100000
+    sta TMPSCREENCELL
+
+lava_store_6_7:
+
+    lda TMPSCREENCELL1
+    sta GAMEMAP3,y
+
+    lda TMPSCREENCELL
+    sta GAMEMAP4,y
+
+;--------------------------------------------------------------
+lava_cell_8_9: ;------------------------
+
+    inx
+
+    lda #0
+    sta TMPSCREENCELL1
+
+    lda THEMAP,x
+    eor #%01000000
+    and #%11110000
+    bne lava_nextseg4
+
+    lda TMPSCREENCELL
+    eor #%00011100
+    sta TMPSCREENCELL
+
+lava_nextseg4:
+
+    lda THEMAP,x
+    eor #%00000100
+    and #%00001111
+    bne lava_store_8_9
+    ;
+    
+    lda TMPSCREENCELL
+    eor #%00000011
+    sta TMPSCREENCELL
+    lda #%00000001
+    sta TMPSCREENCELL1
+
+
+lava_store_8_9:
+
+    lda TMPSCREENCELL
+    sta GAMEMAP4,y  ;
+    lda TMPSCREENCELL1
+    sta GAMEMAP5,y
+
+
+    ;--------------------------------------------------------------
+lava_cell_10_11: ;----------------------
+
+    inx
+
+    lda THEMAP,x
+    eor #%01000000
+    and #%11110000
+    bne lava_nextseg5
+
+    lda TMPSCREENCELL1
+    eor #%00001110
+    sta TMPSCREENCELL1
+
+lava_nextseg5:
+
+    lda THEMAP,x
+    eor #%00000100
+    and #%00001111
+    bne lava_store_10_11_y0
+    ;
+    lda TMPSCREENCELL1
+    eor #%01110000
+    sta TMPSCREENCELL1
+
+    
+
+lava_store_10_11_y0:
+
+    lda TMPSCREENCELL1
+    sta GAMEMAP5,y
+
+    rts
+
+
+
 
 ;--------------------------------------------------------------
 ;Fills a row from the logic map to the screenmap
@@ -708,7 +932,6 @@ store_0_1:
 
     lda TMPSCREENCELL
     sta GAMEMAP0,y
-    
     lda TMPSCREENCELL1
     sta GAMEMAP1,y
 
@@ -813,7 +1036,6 @@ nextseg3:
     lda #%11100000
     sta TMPSCREENCELL
 
-
 store_6_7:
 
     lda TMPSCREENCELL1
@@ -867,7 +1089,6 @@ cell_10_11: ;----------------------
 
     inx
 
-
     lda THEMAP,x
     eor #%00010000
     and #%11110000
@@ -894,28 +1115,6 @@ store_10_11_y0:
 
     lda TMPSCREENCELL1
     sta GAMEMAP5,y
-    sta GAMEMAP5,y
-
-    rts
-
-;--------------------------------------------------------------
-;Fills screen map according to what is on the logics map aka THEMAP
-FillScreenMap:
-
-    ldx #0
-    stx TMPSCREENCELL
-    stx TMPSCREENCELL1
-    ldy #MAPHEIGHT-1
-
-rowloop:
-
-    jsr Fill_ScreenMaps_row
-
-    inx
-    dey
-    cpy #255    ;supposedly -1
-    bne rowloop
-
 
     rts
 
@@ -935,7 +1134,7 @@ noeor:
 GenerateMap:
 
     ldx #MAPSIZE
-    lda #%00010001
+    lda #%01000001
 genloop:
     sta THEMAP,x
     dex
@@ -983,17 +1182,49 @@ VBlank:
     sta HMOVE
 
 
-;    ldx SCREEN_FRAME
-;    inx
-;    cpx #2
-;    bne continueVBlank
+    ldx SCREEN_FRAME
+    cpx #0
+    beq lavaFill
+    ;--------------- filling screen map with ground tiles
+    lda #$FC        ;brown bricks
+    sta TILECOLOR
+    ldx #0
+    stx TMPSCREENCELL
+    stx TMPSCREENCELL1
+    ldy #MAPHEIGHT-1
 
-;    ldx #0
+rowloop:
 
-;continueVBlank:
- ;   stx SCREEN_FRAME
+    jsr Fill_ScreenMaps_row
 
-    jsr FillScreenMap
+    inx
+    dey
+    cpy #255    ;supposedly -1
+    bne rowloop
+    ;--------------
+
+    jmp animatePlayer
+
+lavaFill:
+    ;--------------------------
+    lda #$38
+    sta TILECOLOR   ;red lava bricks
+    ldx #0
+    stx TMPSCREENCELL
+    stx TMPSCREENCELL1
+    ldy #MAPHEIGHT-1
+
+lava_rowloop:
+
+    jsr Fill_ScreenMaps_Lava_row
+
+    inx
+    dey
+    cpy #255    ;supposedly -1
+    bne lava_rowloop
+    ;----------------------
+
+animatePlayer:
 
     ;set the frame for the sprite
     lda PLAYER_FRAME
