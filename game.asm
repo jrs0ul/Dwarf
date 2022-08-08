@@ -68,6 +68,8 @@ TMPNUM          ds 1
 SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
+
+FILLED          ds 1
 ;------------------------------------------------------
 ;                  96 | 32 bytes free
 ;------------------------------------------------------
@@ -112,7 +114,7 @@ Reset:
     sta SCREEN_FRAME
     sta LADDER_IDX
 
-
+    sta FILLED
     
     jsr GenerateMap
 
@@ -584,53 +586,30 @@ checkCellCollision:
 
     lda PLAYERX
     ldx #0
-div:            ; divide PLAYERX by 12, result goes to x
+divx:
     inx
-    sbc #12
-    bcs div
-    txa         ;divide the result by 2
-    sta TEMP_X_INDEX
-    ;--------------
+    sbc #4
+    bcs divx
+
+    stx TMPNUM
+
     lda PLAYERY
     ldx #0
 divy:
     inx
     sbc #12
     bcs divy
+    dex     ; playerY / 12 - 1
 
-    stx TMPNUM
-    lda #7
-    sbc TMPNUM
+    ldy TMPNUM  ;grab x
+    lda MAP_X_LOOKUP,y
+    stx TMPNUM; store y
+    adc TMPNUM  ;x+y
     tax
 
     lda #0
-multiply:
-    cpx #0
-    beq zerorow
-    adc #5
-    dex
-    jmp multiply
-zerorow:
-    
-    sta TMPNUM ; store ( y * row len)
-    lda TEMP_X_INDEX
+    sta GAMEMAP0,x
 
-    lsr
-    bcs secondSegmentMined
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    and #%11110000
-    jmp changemap
-secondSegmentMined:
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    and #%00001111
-changemap:
-    sta THEMAP,x
 
     ;----   Let's restore the X
     lda PLAYER_DIR
@@ -1178,9 +1157,9 @@ VBlank:
     sta HMOVE
 
 
-    ldx SCREEN_FRAME
+    ldx FILLED
     cpx #1
-    beq lavaFill
+    beq animatePlayer
     ;--------------- filling screen map with ground tiles
     lda #$FC        ;brown bricks
     sta TILECOLOR
@@ -1197,29 +1176,10 @@ rowloop:
     dey
     cpy #255    ;supposedly -1
     bne rowloop
-    ;--------------
 
-    jmp animatePlayer
-
-lavaFill:
-    ;--------------------------
-    lda #$38
-    sta TILECOLOR   ;red lava bricks
-    ldx #0
-    stx TMPSCREENCELL
-    stx TMPSCREENCELL1
-    ldy #MAPHEIGHT-1
-
-lava_rowloop:
-
-    jsr Fill_ScreenMaps_Lava_row
-
-    inx
-    dey
-    cpy #255    ;supposedly -1
-    bne lava_rowloop
-    ;----------------------
-
+    lda #1
+    sta FILLED
+   
 animatePlayer:
 
     ;set the frame for the sprite
@@ -1388,6 +1348,50 @@ LADDER_X_POSSITIONS: ;x positions for ladder sprites based on the location in th
 
 MAP_ROW_STARTS_AT:
     .byte 0,6,12,18,24,30
+
+
+MAP_X_LOOKUP:
+    .byte 0 ;0
+    .byte 1 ;1
+
+    .byte 6 ;2
+    .byte 6 ;3
+    .byte 6 ;4
+    .byte 6 ;5
+    .byte 6 ;6
+    .byte 6 ;7
+    .byte 6 ;8
+    .byte 6 ;9
+
+    .byte 12 ;10
+    .byte 12 ;11
+    .byte 12 ;12
+    .byte 12 ;13
+    .byte 12 ;14
+    .byte 12 ;15
+    .byte 12 ;16
+    .byte 12 ;17
+
+    .byte 18 ;18
+    .byte 18 ;19
+    .byte 18 ;20
+    .byte 18 ;21
+
+    .byte 24 ;22
+    .byte 24 ;23
+    .byte 24 ;24
+    .byte 24 ;25
+    .byte 24 ;26
+    .byte 24 ;27
+    .byte 24 ;28
+    .byte 24 ;29
+
+    .byte 30 ;30
+    .byte 30 ;31
+    .byte 30 ;32
+    .byte 30 ;33
+    .byte 30 ;34
+    .byte 30 ;35
 
 
     ;------------------------------------------
