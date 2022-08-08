@@ -3,7 +3,6 @@
     include "macro.h"
 
 
-MAPSIZE = 36        ;(12 * 6) / 2
 MAPHEIGHT = 6
 PLAYERHEIGHT = 9
 LADDERHEIGHT = 11
@@ -22,60 +21,53 @@ NO_ILLEGAL_OPCODES = 1 ; DASM needs it
     SEG.U VARS
     ORG $80
 
+GAMEMAP0         ds 6  ;screen map
+GAMEMAP1         ds 6
+GAMEMAP2         ds 6
+GAMEMAP3         ds 6
+GAMEMAP4         ds 6
+GAMEMAP5         ds 6
 
-THEMAP          ds MAPSIZE ; logical map
+LADDER1X         ds 1
+LADDER2X         ds 1
+LADDER3X         ds 1
+LADDER4X         ds 1
+LADDER5X         ds 1
+LADDER_IDX       ds 1
 
-GAMEMAP0        ds 6  ;screen map
-GAMEMAP1        ds 6
-GAMEMAP2        ds 6
-GAMEMAP3        ds 6
-GAMEMAP4        ds 6
-GAMEMAP5        ds 6
+TILECOLOR        ds 1
 
-LADDER1X        ds 1
-LADDER2X        ds 1
-LADDER3X        ds 1
-LADDER4X        ds 1
-LADDER5X        ds 1
-LADDER_IDX      ds 1
+PLAYERY          ds 1  ; Player's Y position
+PLAYERX          ds 1  ; Player's X position
 
-TILECOLOR       ds 1
-
-PLAYERY         ds 1  ; Player's Y position
-PLAYERX         ds 1  ; Player's X position
-
-OLDPLAYERY      ds 1
-OLDPLAYERX      ds 1
+OLDPLAYERY       ds 1
+OLDPLAYERX       ds 1
 OLDPLAYER_FRAME  ds 1
 
-PLAYER_DIR      ds 1  ; Player's direction
-PLAYER_FLIP     ds 1
+PLAYER_DIR       ds 1  ; Player's direction
+PLAYER_FLIP      ds 1
 
-INPUT           ds 1  ; Input from the joystick
-TEMP_X_INDEX    ds 1  ; Temp variable used in drawing, and in input checking
+INPUT            ds 1  ; Input from the joystick
+TEMP_X_INDEX     ds 1  ; Temp variable used in drawing, and in input checking
 
-SCREENMAP_IDX:        ;index of the screenmap line; used in drawing
-TMPSCREENCELL1:       ;temporary variable for fillscreenmap
-                ds 1
-TMPSCREENCELL:        ;temporary variable for fillscreenmap
-LINE_IDX:             ; line counter for a map cell
-                ds 1
+SCREENMAP_IDX    ds 1  ;index of the screenmap line; used in drawing
 
-RANDOM          ds 1  ;random 8bit number
+LINE_IDX         ds 1  ; line counter for a map cell
 
-PLAYERPTR       ds 2  ;16bit address of the active sprites's frame graphics
-PLAYER_FRAME    ds 1  ;frame index
+RANDOM           ds 1  ;random 8bit number
 
-TMPNUM          ds 1
-MINED_CELL_X    ds 1
+PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
+PLAYER_FRAME     ds 1  ;frame index
 
-SCREEN_FRAME    ds 1
-LADDER_LINE_IDX ds 1
-PLAYER_LINE_IDX ds 1
+TMPNUM           ds 1
+MINED_CELL_X     ds 1
 
-FILLED          ds 1
+SCREEN_FRAME     ds 1
+LADDER_LINE_IDX  ds 1
+PLAYER_LINE_IDX  ds 1
+
 ;------------------------------------------------------
-;                  96 | 32 bytes free
+;                  63 | 65 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -118,7 +110,6 @@ Reset:
     sta SCREEN_FRAME
     sta LADDER_IDX
 
-    sta FILLED
     
     jsr GenerateMap
 
@@ -611,10 +602,10 @@ divy:
     adc TMPNUM  ;x+y
     tax
 
-    lda GAMEMAP0,x
-    ldy MINED_CELL_X ; store cells x in y register
-    and CELLS_LOOKUP,y 
-    sta GAMEMAP0,x
+    lda GAMEMAP0,x     ; load the map's segment we are mining
+    ldy MINED_CELL_X   ; store cell's x in y register
+    and CELLS_LOOKUP,y ; grab the destruction pattern based on x
+    sta GAMEMAP0,x     ; change the map
 
 
     ;----   Let's restore the X
@@ -653,449 +644,7 @@ DivideLoop
 
     rts
 ;-----------------------------------------
-;Fills a row from the logic map to the screenmap
-Fill_ScreenMaps_Lava_row:
 
-lava_cell_0_1: 
-
-    lda #%00000000
-    sta TMPSCREENCELL
-    sta TMPSCREENCELL1
-
-    lda THEMAP,x
-    eor #%01000000
-    and #%11110000
-    bne lava_nextseg0
-
-    lda #%10000000 ;this goes to PF0
-    sta TMPSCREENCELL
-    lda #%11000000  ; PF1
-    sta TMPSCREENCELL1
-
-lava_nextseg0:
-    lda THEMAP,x
-    eor #%00000100
-    and #%00001111
-    bne lava_store_0_1
-    ;
-    lda TMPSCREENCELL1
-    eor #%00111000
-    sta TMPSCREENCELL1
-
-lava_store_0_1:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP0,y
-    lda TMPSCREENCELL1
-    sta GAMEMAP1,y
-
-;--------------------------------------------------------------
-lava_cell_2_3: 
-
-    inx
-
-    lda #0
-    sta TMPSCREENCELL
-
-    lda THEMAP,x
-    eor #%01000000
-    and #%11110000
-    bne lava_nextseg1
-
-    lda TMPSCREENCELL1
-    eor #%00000111
-    sta TMPSCREENCELL1
-
-lava_nextseg1:
-
-    lda THEMAP,x
-    eor #%00000100
-    and #%00001111
-    bne lava_store_2_3
-    ;
-    lda TMPSCREENCELL
-    eor #%00000111
-    sta TMPSCREENCELL
-
-
-lava_store_2_3:
-    
-    lda TMPSCREENCELL
-    sta GAMEMAP2,y
-    lda TMPSCREENCELL1
-    sta GAMEMAP1,y  ; PF1
-
-;--------------------------------------------------------------
-lava_cell_4_5: ;------------------------
-    
-    inx
-
-    lda #0
-    sta TMPSCREENCELL1
-
-    lda THEMAP,x
-    eor #%01000000
-    and #%11110000
-    bne lava_nextseg2
-
-    lda TMPSCREENCELL
-    eor #%00111000
-    sta TMPSCREENCELL
-
-lava_nextseg2:
-
-    lda THEMAP,x
-    eor #%00000101
-    and #%00001111
-    bne lava_store_4_5
-    ;
-    lda TMPSCREENCELL
-    eor #%11000000
-    sta TMPSCREENCELL
-    lda #%00010000
-    sta TMPSCREENCELL1
-
-
-lava_store_4_5:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP2,y
-    lda TMPSCREENCELL1
-    sta GAMEMAP3,y
-
-;--------------------------------------------------------------
-lava_cell_6_7: ;------------------------
-
-    inx
-
-    lda #%0
-    sta TMPSCREENCELL
-
-    lda THEMAP,x
-    eor #%01000000
-    and #%11110000
-    bne lava_nextseg3
-
-    lda TMPSCREENCELL1
-    eor #%11100000
-    sta TMPSCREENCELL1
-
-lava_nextseg3:
-
-    lda THEMAP,x
-    eor #%00000100
-    and #%00001111
-    bne lava_store_6_7
-    
-    lda #%11100000
-    sta TMPSCREENCELL
-
-lava_store_6_7:
-
-    lda TMPSCREENCELL1
-    sta GAMEMAP3,y
-
-    lda TMPSCREENCELL
-    sta GAMEMAP4,y
-
-;--------------------------------------------------------------
-lava_cell_8_9: ;------------------------
-
-    inx
-
-    lda #0
-    sta TMPSCREENCELL1
-
-    lda THEMAP,x
-    eor #%01000000
-    and #%11110000
-    bne lava_nextseg4
-
-    lda TMPSCREENCELL
-    eor #%00011100
-    sta TMPSCREENCELL
-
-lava_nextseg4:
-
-    lda THEMAP,x
-    eor #%00000100
-    and #%00001111
-    bne lava_store_8_9
-    ;
-    
-    lda TMPSCREENCELL
-    eor #%00000011
-    sta TMPSCREENCELL
-    lda #%00000001
-    sta TMPSCREENCELL1
-
-
-lava_store_8_9:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP4,y  ;
-    lda TMPSCREENCELL1
-    sta GAMEMAP5,y
-
-
-    ;--------------------------------------------------------------
-lava_cell_10_11: ;----------------------
-
-    inx
-
-    lda THEMAP,x
-    eor #%01000000
-    and #%11110000
-    bne lava_nextseg5
-
-    lda TMPSCREENCELL1
-    eor #%00001110
-    sta TMPSCREENCELL1
-
-lava_nextseg5:
-
-    lda THEMAP,x
-    eor #%00000100
-    and #%00001111
-    bne lava_store_10_11_y0
-    ;
-    lda TMPSCREENCELL1
-    eor #%01110000
-    sta TMPSCREENCELL1
-
-    
-
-lava_store_10_11_y0:
-
-    lda TMPSCREENCELL1
-    sta GAMEMAP5,y
-
-    rts
-
-
-
-
-;--------------------------------------------------------------
-;Fills a row from the logic map to the screenmap
-Fill_ScreenMaps_row:
-
-cell_0_1: 
-
-    lda #%00000000
-    sta TMPSCREENCELL
-    sta TMPSCREENCELL1
-
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    bne nextseg0
-
-    lda #%10000000 ;this goes to PF0
-    sta TMPSCREENCELL
-    lda #%11000000  ; PF1
-    sta TMPSCREENCELL1
-
-nextseg0:
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    bne store_0_1
-    ;
-    lda TMPSCREENCELL1
-    eor #%00111000
-    sta TMPSCREENCELL1
-
-store_0_1:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP0,y
-    lda TMPSCREENCELL1
-    sta GAMEMAP1,y
-
-;--------------------------------------------------------------
-cell_2_3: 
-
-    inx
-
-    lda #0
-    sta TMPSCREENCELL
-
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    bne nextseg1
-
-    lda TMPSCREENCELL1
-    eor #%00000111
-    sta TMPSCREENCELL1
-
-nextseg1:
-
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    bne store_2_3
-    ;
-    lda TMPSCREENCELL
-    eor #%00000111
-    sta TMPSCREENCELL
-
-
-store_2_3:
-    
-    lda TMPSCREENCELL
-    sta GAMEMAP2,y
-    lda TMPSCREENCELL1
-    sta GAMEMAP1,y  ; PF1
-
-;--------------------------------------------------------------
-cell_4_5: ;------------------------
-    
-    inx
-
-    lda #0
-    sta TMPSCREENCELL1
-
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    bne nextseg2
-
-    lda TMPSCREENCELL
-    eor #%00111000
-    sta TMPSCREENCELL
-
-nextseg2:
-
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    bne store_4_5
-    ;
-    lda TMPSCREENCELL
-    eor #%11000000
-    sta TMPSCREENCELL
-    lda #%00010000
-    sta TMPSCREENCELL1
-
-
-store_4_5:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP2,y
-    lda TMPSCREENCELL1
-    sta GAMEMAP3,y
-
-;--------------------------------------------------------------
-cell_6_7: ;------------------------
-
-    inx
-
-    lda #%0
-    sta TMPSCREENCELL
-
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    bne nextseg3
-
-    lda TMPSCREENCELL1
-    eor #%11100000
-    sta TMPSCREENCELL1
-
-nextseg3:
-
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    bne store_6_7
-    
-    lda #%11100000
-    sta TMPSCREENCELL
-
-store_6_7:
-
-    lda TMPSCREENCELL1
-    sta GAMEMAP3,y
-
-    lda TMPSCREENCELL
-    sta GAMEMAP4,y
-
-;--------------------------------------------------------------
-cell_8_9: ;------------------------
-
-    inx
-
-    lda #0
-    sta TMPSCREENCELL1
-
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    bne nextseg4
-
-    lda TMPSCREENCELL
-    eor #%00011100
-    sta TMPSCREENCELL
-
-nextseg4:
-
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    bne store_8_9
-    ;
-    
-    lda TMPSCREENCELL
-    eor #%00000011
-    sta TMPSCREENCELL
-    lda #%00000001
-    sta TMPSCREENCELL1
-
-
-store_8_9:
-
-    lda TMPSCREENCELL
-    sta GAMEMAP4,y  ;
-    lda TMPSCREENCELL1
-    sta GAMEMAP5,y
-
-
-    ;--------------------------------------------------------------
-cell_10_11: ;----------------------
-
-    inx
-
-    lda THEMAP,x
-    eor #%00010000
-    and #%11110000
-    bne nextseg5
-
-    lda TMPSCREENCELL1
-    eor #%00001110
-    sta TMPSCREENCELL1
-
-nextseg5:
-
-    lda THEMAP,x
-    eor #%00000001
-    and #%00001111
-    bne store_10_11_y0
-    ;
-    lda TMPSCREENCELL1
-    eor #%01110000
-    sta TMPSCREENCELL1
-
-    
-
-store_10_11_y0:
-
-    lda TMPSCREENCELL1
-    sta GAMEMAP5,y
-
-    rts
-
-;------------------------
 UpdateRandomNumber:
 
     lda RANDOM
@@ -1110,16 +659,55 @@ noeor:
 ;-------------------------
 GenerateMap:
 
-    ldx #MAPSIZE
-    lda #%00010001
-genloop:
-    sta THEMAP,x
+    ldx #6
+    lda #%10000000
+genloop0:
     dex
-    bne genloop
+    sta GAMEMAP0,x
+    bne genloop0
 
-    ;ldx #5
-    ;lda #%01000100
-    ;sta THEMAP,x
+    ldx #6
+    lda #$FF
+genloop1:
+    dex
+    sta GAMEMAP1,x
+    bne genloop1
+
+    ldx #6
+    lda #$FF
+genloop2:
+    dex
+    sta GAMEMAP2,x
+    bne genloop2
+
+    ldx #6
+    lda #$FF
+genloop3:
+    dex
+    sta GAMEMAP3,x
+    bne genloop3
+
+    ldx #6
+    lda #$FF
+genloop4:
+    dex
+    sta GAMEMAP4,x
+    bne genloop4
+
+    ldx #6
+    lda #%01111111
+genloop5:
+    dex
+    sta GAMEMAP5,x
+    bne genloop5
+
+
+    ldx #5
+    lda #0
+    sta GAMEMAP0,x
+    lda #%00000111
+    sta GAMEMAP1,x
+
 
     ldy #0
     ;----------
@@ -1131,20 +719,20 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     sta LADDER1X,y              ;  store sprite position to ram variable
     txa                         ;  transfer ladder cell position back to A
 
-    lsr                         ;  cell number / 2
-    bcs secondSeg               ;  we have a modulus, that means it's a second segment
-    clc
-    adc MAP_ROW_STARTS_AT,y+1   ;  add value from the table
-    tax
-    lda #LADDERONLEFT
-    jmp storeLadderToMap
-secondSeg:
-    clc
-    adc MAP_ROW_STARTS_AT,y+1
-    tax
-    lda #LADDERONRIGHT
-storeLadderToMap:
-    sta THEMAP,x
+    ;lsr                         ;  cell number / 2
+    ;bcs secondSeg               ;  we have a modulus, that means it's a second segment
+    ;clc
+    ;adc MAP_ROW_STARTS_AT,y+1   ;  add value from the table
+    ;tax
+    ;lda #LADDERONLEFT
+    ;jmp storeLadderToMap
+;secondSeg:
+;    clc
+;    adc MAP_ROW_STARTS_AT,y+1
+;    tax
+;    lda #LADDERONRIGHT
+;storeLadderToMap:
+;    sta THEMAP,x
 
     iny
     cpy #5
@@ -1163,28 +751,8 @@ VBlank:
     sta HMOVE
 
 
-    ldx FILLED
-    cpx #1
-    beq animatePlayer
-    ;--------------- filling screen map with ground tiles
     lda #$FC        ;brown bricks
     sta TILECOLOR
-    ldx #0
-    stx TMPSCREENCELL
-    stx TMPSCREENCELL1
-    ldy #MAPHEIGHT-1
-
-rowloop:
-
-    jsr Fill_ScreenMaps_row
-
-    inx
-    dey
-    cpy #255    ;supposedly -1
-    bne rowloop
-
-    lda #1
-    sta FILLED
    
 animatePlayer:
 
@@ -1356,7 +924,7 @@ MAP_ROW_STARTS_AT:
     .byte 0,6,12,18,24,30
 
 
-MAP_X_LOOKUP:
+MAP_X_LOOKUP: ; offset from GAMEMAP0, based on X
     .byte 0 ;0
     .byte 1 ;1
 
@@ -1399,7 +967,7 @@ MAP_X_LOOKUP:
     .byte 30 ;34
     .byte 30 ;35
 
-CELLS_LOOKUP:
+CELLS_LOOKUP: ;map destruction patterns we're gonna use with "AND"
     .byte %00000000 ;0
     .byte %00000000
 
