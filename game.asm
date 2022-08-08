@@ -8,6 +8,7 @@ MAPHEIGHT = 6
 PLAYERHEIGHT = 9
 LADDERHEIGHT = 11
 LINESPERCELL = 12
+X_OFFSET_TO_RIGHT_FOR_MINING = 6
 
 LADDERONLEFT = %00100001  ;0010 - ladder, 0001 - wall
 LADDERONRIGHT = %00010010
@@ -64,7 +65,10 @@ RANDOM          ds 1  ;random 8bit number
 
 PLAYERPTR       ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME    ds 1  ;frame index
+
 TMPNUM          ds 1
+MINED_CELL_X    ds 1
+
 SCREEN_FRAME    ds 1
 LADDER_LINE_IDX ds 1
 PLAYER_LINE_IDX ds 1
@@ -528,7 +532,7 @@ itwasFacingLeftAlready:
     lda PLAYERX
     sec
     sbc #1
-    cmp #2
+    cmp #1
     bcc checkDown
     ldx PLAYERX
     stx OLDPLAYERX
@@ -579,7 +583,7 @@ checkButton:
     cmp #1
     bne checkCellCollision
     lda PLAYERX
-    adc #6          ;need to add a bit to player x, when it's facing right
+    adc #X_OFFSET_TO_RIGHT_FOR_MINING       ;need to add a bit to player x, when it's facing right
     sta PLAYERX
 
 checkCellCollision:
@@ -591,7 +595,7 @@ divx:
     sbc #4
     bcs divx
 
-    stx TMPNUM
+    stx MINED_CELL_X; playerX / 4
 
     lda PLAYERY
     ldx #0
@@ -601,13 +605,15 @@ divy:
     bcs divy
     dex     ; playerY / 12 - 1
 
-    ldy TMPNUM  ;grab x
+    ldy MINED_CELL_X  ;grab x
     lda MAP_X_LOOKUP,y
     stx TMPNUM; store y
     adc TMPNUM  ;x+y
     tax
 
-    lda #0
+    lda GAMEMAP0,x
+    ldy MINED_CELL_X ; store cells x in y register
+    and CELLS_LOOKUP,y 
     sta GAMEMAP0,x
 
 
@@ -617,7 +623,7 @@ divy:
     bne buttonNotPressed
     lda PLAYERX
     clc
-    sbc #6
+    sbc #X_OFFSET_TO_RIGHT_FOR_MINING
     sta PLAYERX
 
 buttonNotPressed:
@@ -1393,6 +1399,48 @@ MAP_X_LOOKUP:
     .byte 30 ;34
     .byte 30 ;35
 
+CELLS_LOOKUP:
+    .byte %00000000 ;0
+    .byte %00000000
+
+    .byte %00111111
+    .byte %00111111
+    .byte %11000111
+    .byte %11000111
+    .byte %11000111
+    .byte %11111000
+    .byte %11111000
+    .byte %11111000
+
+    .byte %11111000
+    .byte %11111000
+    .byte %11111000
+    .byte %11000111
+    .byte %11000111
+    .byte %11000111
+    .byte %00111111
+    .byte %00111111
+
+    .byte %11101111
+    .byte %00011111
+    .byte %00011111
+    .byte %00011111
+
+    .byte %00011111
+    .byte %00011111
+    .byte %00011111
+    .byte %11100011
+    .byte %11100011
+    .byte %11100011
+    .byte %11111100
+    .byte %11111100
+
+    .byte %11111110
+    .byte %11110001
+    .byte %11110001
+    .byte %11110001
+    .byte %10001111
+    .byte %10001111
 
     ;------------------------------------------
     ; free space check 
