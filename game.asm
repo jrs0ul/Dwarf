@@ -48,6 +48,7 @@ OLDPLAYERX      ds 1
 OLDPLAYER_FRAME  ds 1
 
 PLAYER_DIR      ds 1  ; Player's direction
+PLAYER_FLIP     ds 1
 
 INPUT           ds 1  ; Input from the joystick
 TEMP_X_INDEX    ds 1  ; Temp variable used in drawing, and in input checking
@@ -161,6 +162,9 @@ Kernel:
 
     lda TILECOLOR
     sta COLUPF      ;3 brown bricks
+
+    ;lda PLAYER_FLIP
+    ;sta REFP0
 
 
     ldx #72 ; scanlines, max scanlines / 2
@@ -294,7 +298,7 @@ cont:
     sta RESP0      ;2 reset sprite pos
     sta RESP1
 
-    sta REFP0      ;3  turn off mirroring
+    ;sta REFP0      ;3  turn off mirroring
     lda #$0        ;2
     sta HMP0       ;3  reset p1 x offset
     lda #$11       ;2  move p2 sprite left a bit
@@ -399,6 +403,7 @@ Overscan:
 
     bit CXP0FB
     bpl notColliding
+    ;so the player is colliding with the playfield
     lda OLDPLAYERX
     sta PLAYERX
     lda OLDPLAYERY
@@ -453,6 +458,18 @@ ProcessInput:
     sta INPUT
     bcs checkLeft
 moveRight:
+    lda PLAYER_DIR
+    cmp #1
+    beq itWasFacingRightAlready
+    lda #%00000000
+    sta REFP0
+    ;sta PLAYER_FLIP
+    lda #12
+    sta PLAYER_FRAME
+    inc PLAYERX
+    inc PLAYERX
+itWasFacingRightAlready:
+
     lda #1
     sta PLAYER_DIR
     lda PLAYERX
@@ -464,10 +481,8 @@ moveRight:
     ldx PLAYERX
     stx OLDPLAYERX
     sta PLAYERX
-   
-    lda #%00000000
-    ;sta REFP0
-
+  
+    
     ldx PLAYER_FRAME
     inx
     cpx #16 ;we must not let go to animation frame 3, 00010 000
@@ -492,6 +507,19 @@ checkLeft:
     sta INPUT
     bcs checkDown
 moveLeft:
+
+    lda PLAYER_DIR
+    cmp #2
+    beq itwasFacingLeftAlready
+    lda #%00001000
+    sta REFP0
+    ;sta PLAYER_FLIP
+    lda #12
+    sta PLAYER_FRAME
+    dec PLAYERX
+    dec PLAYERX
+itwasFacingLeftAlready:
+
     lda #2
     sta PLAYER_DIR
 
@@ -505,9 +533,7 @@ moveLeft:
     sta PLAYERX
        ;----------
 
-    lda #%00001000
-    ;sta REFP0
-
+    
     ldx PLAYER_FRAME
     inx
     cpx #16 ;we must not let go to animation frame 3, 00010 000
@@ -586,7 +612,6 @@ changemap:
 
 buttonNotPressed:
 
-    
     rts
 ;-------------------------------------
 ;Takes PLAYERX & PLAYERY
