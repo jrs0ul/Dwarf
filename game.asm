@@ -163,8 +163,8 @@ Kernel:
     lda TILECOLOR
     sta COLUPF      ;3 brown bricks
 
-    ;lda PLAYER_FLIP
-    ;sta REFP0
+    lda PLAYER_FLIP
+    sta REFP0
 
 
     ldx #72 ; scanlines, max scanlines / 2
@@ -293,15 +293,15 @@ cont:
     lda #15        ;2 10
     sta COLUP1     ;3 13
     lda #0         ;2 15
-    SLEEP 4        ;6 21
-
+    ;SLEEP 1        ;6 21
+    
+    sta REFP0      ;3  turn off mirroring
     sta RESP0      ;2 reset sprite pos
     sta RESP1
 
-    ;sta REFP0      ;3  turn off mirroring
     lda #$0        ;2
     sta HMP0       ;3  reset p1 x offset
-    lda #$11       ;2  move p2 sprite left a bit
+    lda #254       ;2  move p2 sprite right a bit
     sta HMP1       ;3 
     nop            ;2 
     
@@ -463,7 +463,7 @@ moveRight:
     beq itWasFacingRightAlready
     lda #%00000000
     sta REFP0
-    ;sta PLAYER_FLIP
+    sta PLAYER_FLIP
     lda #12
     sta PLAYER_FRAME
     inc PLAYERX
@@ -513,7 +513,7 @@ moveLeft:
     beq itwasFacingLeftAlready
     lda #%00001000
     sta REFP0
-    ;sta PLAYER_FLIP
+    sta PLAYER_FLIP
     lda #12
     sta PLAYER_FRAME
     dec PLAYERX
@@ -582,42 +582,6 @@ checkButton:
 
 checkCellCollision:
 
-    jsr GetActiveMapCell
-
-    lsr
-    bcs secondSegmentMined
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    and #%11110000
-    jmp changemap
-secondSegmentMined:
-    adc TMPNUM
-    tax
-    dex
-    lda THEMAP,x
-    and #%00001111
-changemap:
-    sta THEMAP,x
-
-    ;----   Let's restore the X
-    lda PLAYER_DIR
-    cmp #1
-    bne buttonNotPressed
-    lda PLAYERX
-    clc
-    sbc #6
-    sta PLAYERX
-
-buttonNotPressed:
-
-    rts
-;-------------------------------------
-;Takes PLAYERX & PLAYERY
-;Stores y*row len in TMPNUM
-;X in A
-GetActiveMapCell
     lda PLAYERX
     ldx #0
 div:            ; divide PLAYERX by 12, result goes to x
@@ -650,6 +614,34 @@ zerorow:
     
     sta TMPNUM ; store ( y * row len)
     lda TEMP_X_INDEX
+
+    lsr
+    bcs secondSegmentMined
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    and #%11110000
+    jmp changemap
+secondSegmentMined:
+    adc TMPNUM
+    tax
+    dex
+    lda THEMAP,x
+    and #%00001111
+changemap:
+    sta THEMAP,x
+
+    ;----   Let's restore the X
+    lda PLAYER_DIR
+    cmp #1
+    bne buttonNotPressed
+    lda PLAYERX
+    clc
+    sbc #6
+    sta PLAYERX
+
+buttonNotPressed:
 
     rts
 
