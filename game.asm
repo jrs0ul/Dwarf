@@ -65,6 +65,8 @@ SCREEN_FRAME     ds 1
 LADDER_LINE_IDX  ds 1
 PLAYER_LINE_IDX  ds 1
 
+SCORE_HEIGHT     ds 1
+
 ;------------------------------------------------------
 ;                  63 | 65 bytes free
 ;------------------------------------------------------
@@ -305,33 +307,43 @@ cont:
 
 
     ldy #PLAYERHEIGHT
-    ldx #10 ; 10 lines
+    sty SCORE_HEIGHT
+    ;ldx #10 ; 10 lines
+    lda #1
+    sta VDELP0
+    sta VDELP1
+
+
 
 score_line_loop:
 
+    ldy SCORE_HEIGHT
+
+    lda ZERO_GFX,y
+    sta GRP0
+
     sta WSYNC
     sta HMOVE
-    cpy #0
-    beq okok
+
     lda ONE_GFX,y
     sta GRP1
-    lda ZERO_GFX,y
-    sta GRP0
-    nop
     lda TWO_GFX,y
     sta GRP0
-    lda TWO_GFX,y
+    lda FIVE_GFX,y
+    tax
+    ;lda FIVE_GFX,y
+    ;sta TMPNUM
+    ;tay
+    lda THREE_GFX,y
+    ;ldy TMPNUM
     sta GRP1
-    lda ZERO_GFX,y
-    sta GRP1
-    lda ONE_GFX,y
+    stx GRP0
+    sty GRP1
     sta GRP0
     sta HMCLR   ; let's clear HM
 
-    dey
-okok:
-    dex
-    bne score_line_loop
+    dec SCORE_HEIGHT
+    bpl score_line_loop
 
 ;----------------------------------------
     lda #0
@@ -359,6 +371,9 @@ okok:
 
     ldy #PLAYERHEIGHT
     ldx #27 ; remaining lines
+    lda #0
+    sta VDELP0
+    sta VDELP1
 
 lives_bar_loop:
 
@@ -913,6 +928,45 @@ TWO_GFX:
     .byte %01000110
     .byte %01000110
     .byte %00111100
+
+THREE_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00111100
+    .byte %01000110
+    .byte %00000110
+    .byte %00011100
+    .byte %00011110
+    .byte %01000110
+    .byte %01000110
+    .byte %00111100
+
+FOUR_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00011100
+    .byte %00011100
+    .byte %11111110
+    .byte %11111110
+    .byte %01000100
+    .byte %00100100
+    .byte %00011100
+    .byte %00001100
+
+FIVE_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %01111100
+    .byte %10000110
+    .byte %00000110
+    .byte %01111110
+    .byte %01000000
+    .byte %01000000
+    .byte %01000000
+    .byte %01111110
+
+
+
 
 
 FINE_ADJUST_BEGIN:      ;HMPx sprite movement lookup table
