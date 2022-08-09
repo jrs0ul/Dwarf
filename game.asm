@@ -9,9 +9,6 @@ LADDERHEIGHT = 11
 LINESPERCELL = 12
 X_OFFSET_TO_RIGHT_FOR_MINING = 6
 
-LADDERONLEFT = %00100001  ;0010 - ladder, 0001 - wall
-LADDERONRIGHT = %00010010
-
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
@@ -60,6 +57,8 @@ PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME     ds 1  ;frame index
 
 TMPNUM           ds 1
+TMPNUM1          ds 1
+TEMPY            ds 1
 MINED_CELL_X     ds 1
 
 SCREEN_FRAME     ds 1
@@ -84,10 +83,11 @@ Reset:
     lda #69
     sta PLAYERY
     sta OLDPLAYERY
-    sta RANDOM
     lda #3
     sta PLAYERX
     sta OLDPLAYERX
+    lda #132
+    sta RANDOM
 
     lda #0
     sta LADDER1X
@@ -659,47 +659,21 @@ noeor:
 ;-------------------------
 GenerateMap:
 
-    ldx #6
+    ldx #0
+genloop:
+    
     lda #%10000000
-genloop0:
-    dex
     sta GAMEMAP0,x
-    bne genloop0
-
-    ldx #6
     lda #$FF
-genloop1:
-    dex
     sta GAMEMAP1,x
-    bne genloop1
-
-    ldx #6
-    lda #$FF
-genloop2:
-    dex
     sta GAMEMAP2,x
-    bne genloop2
-
-    ldx #6
-    lda #$FF
-genloop3:
-    dex
     sta GAMEMAP3,x
-    bne genloop3
-
-    ldx #6
-    lda #$FF
-genloop4:
-    dex
     sta GAMEMAP4,x
-    bne genloop4
-
-    ldx #6
     lda #%01111111
-genloop5:
-    dex
     sta GAMEMAP5,x
-    bne genloop5
+    inx 
+    cpx #6
+    bne genloop
 
 
     ldx #5
@@ -709,7 +683,10 @@ genloop5:
     sta GAMEMAP1,x
 
 
+
     ldy #0
+    lda #4                      ;inverted first y position
+    sta TEMPY
     ;----------
 ladderLoop:                     ;  let's generate a ladder for each of the map rows
     jsr UpdateRandomNumber
@@ -717,26 +694,56 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     tax                         ;  and transfer to X register
     lda LADDER_X_POSSITIONS,x
     sta LADDER1X,y              ;  store sprite position to ram variable
-    txa                         ;  transfer ladder cell position back to A
 
-    ;lsr                         ;  cell number / 2
-    ;bcs secondSeg               ;  we have a modulus, that means it's a second segment
-    ;clc
-    ;adc MAP_ROW_STARTS_AT,y+1   ;  add value from the table
-    ;tax
-    ;lda #LADDERONLEFT
-    ;jmp storeLadderToMap
-;secondSeg:
-;    clc
-;    adc MAP_ROW_STARTS_AT,y+1
-;    tax
-;    lda #LADDERONRIGHT
-;storeLadderToMap:
-;    sta THEMAP,x
 
+    lda MAP_3CELLS_INTERSECTIONS,x
+    stx TMPNUM                  ;store x
+    cmp #1
+    beq onlyOneSegmentUsed
+                                ;two segments used for a map tile
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    sta TMPNUM1
+    tax
+    lda GAMEMAP0,x
+    ldx TMPNUM              ;load x coord
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    ldx TMPNUM1
+    sta GAMEMAP0,x
+    lda GAMEMAP0,x + 6
+    ldx TMPNUM              ;load x coord
+    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    ldx TMPNUM1
+    sta GAMEMAP0,x + 6
+
+    jmp nextLadder
+
+onlyOneSegmentUsed:
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    sta TMPNUM1
+    tax
+    lda GAMEMAP0,x
+    ldx TMPNUM
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    ldx TMPNUM1
+    sta GAMEMAP0,x
+
+
+nextLadder:
     iny
+    lda #5
+    sty TEMPY
+    sbc TEMPY
+    sta TEMPY 
     cpy #5
     bne ladderLoop
+
+
 
     rts
 
@@ -920,10 +927,6 @@ LADDER_X_POSSITIONS: ;x positions for ladder sprites based on the location in th
     .byte 120
     .byte 132
 
-MAP_ROW_STARTS_AT:
-    .byte 0,6,12,18,24,30
-
-
 MAP_X_LOOKUP: ; offset from GAMEMAP0, based on X
     .byte 0 ;0
     .byte 1 ;1
@@ -966,6 +969,65 @@ MAP_X_LOOKUP: ; offset from GAMEMAP0, based on X
     .byte 30 ;33
     .byte 30 ;34
     .byte 30 ;35
+
+MAP_3CELLS_INTERSECTIONS: ;In how many playfield segments a map tile resides
+    .byte 2 ;0
+    .byte 1 ;1
+    .byte 1 ;2
+    .byte 1 ;3
+    .byte 1 ;4
+    .byte 2 ;5
+    .byte 1 ;6
+    .byte 1 ;7
+    .byte 1 ;8
+    .byte 2 ;9
+    .byte 1 ;10
+    .byte 1 ;11
+
+MAP_3CELLS_LOOKUP:
+    .byte 0 ;0
+    .byte 6 ;1
+    .byte 6 ;2
+    .byte 12 ;3
+    .byte 12 ;4
+    .byte 12 ;5
+    .byte 18 ;6
+    .byte 24 ;7
+    .byte 24 ;8
+    .byte 24 ;9
+    .byte 30 ;10
+    .byte 30 ;11
+
+MAP_CLEAR_PATTERN_BY_X_SEG1:
+    .byte %01111111 ;0
+    .byte %11000111 ;1
+    .byte %11111000 ;2
+    .byte %11111000 ;3
+    .byte %11000111 ;4
+    .byte %00111111 ;5
+    .byte %00011111 ;6
+    .byte %00011111 ;7
+    .byte %11100011 ;8
+    .byte %11111100 ;9
+    .byte %11110001 ;10
+    .byte %10001111 ;11
+
+
+MAP_CLEAR_PATTERN_BY_X_SEG2:
+    .byte %00111111 ;0
+    .byte %00000000 ;1
+    .byte %00000000 ;2
+    .byte %00000000 ;3
+    .byte %00000000 ;4
+    .byte %11101111 ;5
+    .byte %00000000 ;6
+    .byte %00000000 ;7
+    .byte %00000000 ;8
+    .byte %11111110 ;9
+    .byte %00000000 ;10
+    .byte %00000000 ;11
+
+
 
 CELLS_LOOKUP: ;map destruction patterns we're gonna use with "AND"
     .byte %00000000 ;0
