@@ -415,13 +415,7 @@ notColliding:
     
     jsr ProcessInput
 
-    ldy SCREEN_FRAME
-    ;iny
-    cpy #2
-    bne continueOverscan
-    ldy #0
-continueOverscan:
-    sty SCREEN_FRAME
+   
 
 
     
@@ -583,10 +577,15 @@ checkCellCollision:
     ldx #0
 divx:
     inx
-    sbc #4
+    sbc #12
     bcs divx
+    dex ;playerX / 12 - 1
 
-    stx MINED_CELL_X; playerX / 4
+    cpx #12
+    bcs doneMining ; nope, the x >= MAPWIDTH
+
+
+    stx MINED_CELL_X;
 
     lda PLAYERY
     ldx #0
@@ -596,17 +595,40 @@ divy:
     bcs divy
     dex     ; playerY / 12 - 1
 
-    ldy MINED_CELL_X  ;grab x
-    lda MAP_X_LOOKUP,y
-    stx TMPNUM; store y
-    adc TMPNUM  ;x+y
-    tax
+    stx TEMPY
 
-    lda GAMEMAP0,x     ; load the map's segment we are mining
-    ldy MINED_CELL_X   ; store cell's x in y register
-    and CELLS_LOOKUP,y ; grab the destruction pattern based on x
-    sta GAMEMAP0,x     ; change the map
+    ldx MINED_CELL_X
 
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    sta TMPNUM1
+
+
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq mine_onlyOneSegmentUsed
+    ;Let's change the second segment
+
+    ldx TMPNUM1
+    lda GAMEMAP0,x + 6
+    ldx MINED_CELL_X              ;load x coord
+    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    ldx TMPNUM1
+    sta GAMEMAP0,x + 6
+
+    ;jmp doneMining
+
+mine_onlyOneSegmentUsed:
+
+    ldx TMPNUM1
+    lda GAMEMAP0,x
+    ldx MINED_CELL_X
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    ldx TMPNUM1
+    sta GAMEMAP0,x
+
+doneMining:
 
     ;----   Let's restore the X
     lda PLAYER_DIR
@@ -621,28 +643,6 @@ buttonNotPressed:
 
     rts
 
-
-;--------------------------------------
-; Moves sprite horizontaly
-; A : X of the sprite
-; X : 0- player0, 1 - player1
-PosSpriteX: 
-    sty WSYNC
-    bit 0           ;3 3    waste 3 cycles
-    sec             ;2 5    set carry flag
-DivideLoop
-    sbc #15         ;2 7    subtract 15
-    bcs DivideLoop  ;2 9    branch until negative
-    eor #7          ;2 11   calculate fine offset
-    asl             ;2 13
-    asl             ;2 15
-    asl             ;2 17
-    asl             ;2 19
-
-    sta HMP0,x
-    sta RESP0,x
-
-    rts
 ;-----------------------------------------
 
 UpdateRandomNumber:
@@ -675,14 +675,11 @@ genloop:
     cpx #6
     bne genloop
 
-
     ldx #5
     lda #0
     sta GAMEMAP0,x
     lda #%00000111
     sta GAMEMAP1,x
-
-
 
     ldy #0
     lda #4                      ;inverted first y position
@@ -698,6 +695,7 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
 
     lda MAP_3CELLS_INTERSECTIONS,x
     stx TMPNUM                  ;store x
+
     cmp #1
     beq onlyOneSegmentUsed
                                 ;two segments used for a map tile
@@ -753,7 +751,21 @@ VBlank:
 
     lda PLAYERX
     ldx #0
-    jsr PosSpriteX
+    sty WSYNC
+    bit 0           ;3 3    waste 3 cycles
+    sec             ;2 5    set carry flag
+DivideLoop
+    sbc #15         ;2 7    subtract 15
+    bcs DivideLoop  ;2 9    branch until negative
+    eor #7          ;2 11   calculate fine offset
+    asl             ;2 13
+    asl             ;2 15
+    asl             ;2 17
+    asl             ;2 19
+
+    sta HMP0,x
+    sta RESP0,x
+
     sta WSYNC
     sta HMOVE
 
@@ -761,6 +773,15 @@ VBlank:
     lda #$FC        ;brown bricks
     sta TILECOLOR
    
+    ldy SCREEN_FRAME
+    iny
+    cpy #2
+    bne continueVBlank
+    ldy #0
+continueVBlank:
+    sty SCREEN_FRAME
+
+
 animatePlayer:
 
     ;set the frame for the sprite
@@ -927,49 +948,6 @@ LADDER_X_POSSITIONS: ;x positions for ladder sprites based on the location in th
     .byte 120
     .byte 132
 
-MAP_X_LOOKUP: ; offset from GAMEMAP0, based on X
-    .byte 0 ;0
-    .byte 1 ;1
-
-    .byte 6 ;2
-    .byte 6 ;3
-    .byte 6 ;4
-    .byte 6 ;5
-    .byte 6 ;6
-    .byte 6 ;7
-    .byte 6 ;8
-    .byte 6 ;9
-
-    .byte 12 ;10
-    .byte 12 ;11
-    .byte 12 ;12
-    .byte 12 ;13
-    .byte 12 ;14
-    .byte 12 ;15
-    .byte 12 ;16
-    .byte 12 ;17
-
-    .byte 18 ;18
-    .byte 18 ;19
-    .byte 18 ;20
-    .byte 18 ;21
-
-    .byte 24 ;22
-    .byte 24 ;23
-    .byte 24 ;24
-    .byte 24 ;25
-    .byte 24 ;26
-    .byte 24 ;27
-    .byte 24 ;28
-    .byte 24 ;29
-
-    .byte 30 ;30
-    .byte 30 ;31
-    .byte 30 ;32
-    .byte 30 ;33
-    .byte 30 ;34
-    .byte 30 ;35
-
 MAP_3CELLS_INTERSECTIONS: ;In how many playfield segments a map tile resides
     .byte 2 ;0
     .byte 1 ;1
@@ -998,79 +976,34 @@ MAP_3CELLS_LOOKUP:
     .byte 30 ;10
     .byte 30 ;11
 
-MAP_CLEAR_PATTERN_BY_X_SEG1:
-    .byte %01111111 ;0
+MAP_CLEAR_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they contains a patter used with AND
+    .byte %01111111 ;0 first part
     .byte %11000111 ;1
     .byte %11111000 ;2
     .byte %11111000 ;3
     .byte %11000111 ;4
-    .byte %00111111 ;5
+    .byte %00111111 ;5 first part
     .byte %00011111 ;6
     .byte %00011111 ;7
     .byte %11100011 ;8
-    .byte %11111100 ;9
+    .byte %11111100 ;9 first part
     .byte %11110001 ;10
     .byte %10001111 ;11
 
 
-MAP_CLEAR_PATTERN_BY_X_SEG2:
-    .byte %00111111 ;0
+MAP_CLEAR_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfield registers, this is the second part
+    .byte %00111111 ;0 second part
     .byte %00000000 ;1
     .byte %00000000 ;2
     .byte %00000000 ;3
     .byte %00000000 ;4
-    .byte %11101111 ;5
+    .byte %11101111 ;5 second part
     .byte %00000000 ;6
     .byte %00000000 ;7
     .byte %00000000 ;8
-    .byte %11111110 ;9
+    .byte %11111110 ;9 second part
     .byte %00000000 ;10
     .byte %00000000 ;11
-
-
-
-CELLS_LOOKUP: ;map destruction patterns we're gonna use with "AND"
-    .byte %00000000 ;0
-    .byte %00000000
-
-    .byte %00111111
-    .byte %00111111
-    .byte %11000111
-    .byte %11000111
-    .byte %11000111
-    .byte %11111000
-    .byte %11111000
-    .byte %11111000
-
-    .byte %11111000
-    .byte %11111000
-    .byte %11111000
-    .byte %11000111
-    .byte %11000111
-    .byte %11000111
-    .byte %00111111
-    .byte %00111111
-
-    .byte %11101111
-    .byte %00011111
-    .byte %00011111
-    .byte %00011111
-
-    .byte %00011111
-    .byte %00011111
-    .byte %00011111
-    .byte %11100011
-    .byte %11100011
-    .byte %11100011
-    .byte %11111100
-    .byte %11111100
-
-    .byte %11111110
-    .byte %11110001
-    .byte %11110001
-    .byte %11110001
-    .byte %10001111
-    .byte %10001111
 
     ;------------------------------------------
     ; free space check 
