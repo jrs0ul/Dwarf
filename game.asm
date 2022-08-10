@@ -770,11 +770,11 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     and MAP_CLEAR_PATTERN_BY_X_SEG1,x
     ldx TMPNUM1
     sta GAMEMAP0,x
-    lda GAMEMAP0,x + 6
+    lda GAMEMAP0,x + MAPHEIGHT
     ldx TMPNUM              ;load x coord
     and MAP_CLEAR_PATTERN_BY_X_SEG2,x
     ldx TMPNUM1
-    sta GAMEMAP0,x + 6
+    sta GAMEMAP0,x + MAPHEIGHT
 
     jmp nextLadder
 
