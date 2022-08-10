@@ -66,12 +66,13 @@ LADDER_LINE_IDX  ds 1
 PLAYER_LINE_IDX  ds 1
 
 SCORE_HEIGHT     ds 1
-SCORE_PTR        ds 12
-SCORE_DIGITS_IDX ds 6
+SCORE_PTR        ds 12  ; pointers to digit graphics
+SCORE_DIGITS_IDX ds 6   ;indexes of highscore digits (0..9)
+TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
 ;------------------------------------------------------
-;                  82 | 44 bytes free
+;                  83 | 43 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -444,17 +445,22 @@ Vsync:
     sta VSYNC
     rts
 
-
+;----------------------------
+;set Y as number of the digit
 IncrementScore:
 
-    ldx SCORE_DIGITS_IDX
+    ldx SCORE_DIGITS_IDX,y
     inx
     cpx #10
     bne storeDigit
     ldx #0
-    inc SCORE_DIGITS_IDX+1
+    iny
+    stx TMP_DIGIT
+    jsr IncrementScore
+    ldx TMP_DIGIT
+    dey
 storeDigit:
-    stx SCORE_DIGITS_IDX
+    stx SCORE_DIGITS_IDX,y
 
     rts
 
@@ -626,6 +632,7 @@ divy:
     sta TMPNUM1
 
 
+    ldy #0 ; first digit
     jsr IncrementScore
 
     ldx MINED_CELL_X
