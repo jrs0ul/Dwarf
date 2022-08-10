@@ -292,7 +292,6 @@ cont:
     lda #15        ;2 10
     sta COLUP1     ;3 13
     lda #0         ;2 15
-    ;SLEEP 1        ;6 21
     
     sta REFP0      ;3  turn off mirroring
     sta RESP0      ;2 reset sprite pos
@@ -308,42 +307,41 @@ cont:
 
     ldy #PLAYERHEIGHT
     sty SCORE_HEIGHT
-    ;ldx #10 ; 10 lines
     lda #1
     sta VDELP0
     sta VDELP1
 
 
-
 score_line_loop:
 
-    ldy SCORE_HEIGHT
+    ldy SCORE_HEIGHT    ;3 52
 
-    lda ZERO_GFX,y
-    sta GRP0
+    lda FIVE_GFX,y      ;4 56
+    sta TMPNUM          ;3 59
+    lda ZERO_GFX,y      ;4 63
+    sta GRP0            ;3 66
 
-    sta WSYNC
-    sta HMOVE
+    sta WSYNC           ;----------
+    ;sta HMOVE           ;3 3
 
-    lda ONE_GFX,y
-    sta GRP1
-    lda TWO_GFX,y
-    sta GRP0
-    lda FIVE_GFX,y
-    tax
-    ;lda FIVE_GFX,y
-    ;sta TMPNUM
-    ;tay
-    lda THREE_GFX,y
-    ;ldy TMPNUM
-    sta GRP1
-    stx GRP0
-    sty GRP1
-    sta GRP0
-    sta HMCLR   ; let's clear HM
+    lda ONE_GFX,y       ;4 7
+    sta GRP1            ;3 10
+    lda TWO_GFX,y       ;4 14
+    sta GRP0            ;3 17
+    lda FOUR_GFX,y      ;4 21
+    tax                 ;2 23
+    lda THREE_GFX,y     ;4 27
+    ldy TMPNUM
 
-    dec SCORE_HEIGHT
-    bpl score_line_loop
+    sta GRP1            ;3 30
+    stx GRP0            ;3 33
+    sty GRP1            ;3 36 last digit
+    sta GRP0            ;3 39
+
+    dec SCORE_HEIGHT    ;5 47
+    ;sta HMCLR          ;3 42 let's clear HM
+
+    bpl score_line_loop ;2 49
 
 ;----------------------------------------
     lda #0
@@ -944,23 +942,23 @@ THREE_GFX:
 FOUR_GFX:
     .byte %00000000
     .byte %00000000
-    .byte %00011100
-    .byte %00011100
+    .byte %00001100
+    .byte %00001100
     .byte %11111110
     .byte %11111110
     .byte %01000100
     .byte %00100100
-    .byte %00011100
+    .byte %00010100
     .byte %00001100
 
 FIVE_GFX:
     .byte %00000000
     .byte %00000000
-    .byte %01111100
-    .byte %10000110
+    .byte %00111100
+    .byte %01000110
     .byte %00000110
-    .byte %01111110
-    .byte %01000000
+    .byte %00000110
+    .byte %01111100
     .byte %01000000
     .byte %01000000
     .byte %01111110
