@@ -629,11 +629,9 @@ divy:
     lda MAP_3CELLS_LOOKUP,x
     clc
     adc TEMPY
-    sta TMPNUM1
+    tay ; store the cell offset in Y
 
 
-    ldy #0 ; first digit
-    jsr IncrementScore
 
     ldx MINED_CELL_X
     lda MAP_3CELLS_INTERSECTIONS,x
@@ -641,23 +639,21 @@ divy:
     beq mine_onlyOneSegmentUsed
     ;Let's change the second segment
 
-    ldx TMPNUM1
-    lda GAMEMAP0,x + 6
+    lda GAMEMAP0,y + 6
     ldx MINED_CELL_X              ;load x coord
     and MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    ldx TMPNUM1
-    sta GAMEMAP0,x + 6
+    sta GAMEMAP0,y + 6
 
 
 mine_onlyOneSegmentUsed:
 
-    ldx TMPNUM1
-    lda GAMEMAP0,x
+    lda GAMEMAP0,y
     ldx MINED_CELL_X
     and MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    ldx TMPNUM1
-    sta GAMEMAP0,x
+    sta GAMEMAP0,y
 
+    ldy #0 ; first digit
+    jsr IncrementScore
 
 doneMining:
 
