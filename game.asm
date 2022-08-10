@@ -93,8 +93,17 @@ Reset:
     sta SCREEN_FRAME
     sta LADDER_IDX
 
-NewGame:
+    jsr EnterNewMap
 
+
+Main:
+    jsr Vsync
+    jsr VBlank
+    jsr Kernel 
+    jsr Overscan
+    jmp Main
+;--------------------------
+EnterNewMap:
     ;set player coordinates
     lda #69
     sta PLAYERY
@@ -106,13 +115,8 @@ NewGame:
 
     jsr GenerateMap
 
+    rts
 
-Main:
-    jsr Vsync
-    jsr VBlank
-    jsr Kernel 
-    jsr Overscan
-    jmp Main
 ;--------------------------
 Kernel:
     sta WSYNC
@@ -859,7 +863,7 @@ animatePlayer:
     lda PLAYERY
     cmp #12
     bcs notReached
-    jsr NewGame
+    jsr EnterNewMap
 notReached:
 
     rts
