@@ -66,9 +66,12 @@ LADDER_LINE_IDX  ds 1
 PLAYER_LINE_IDX  ds 1
 
 SCORE_HEIGHT     ds 1
+SCORE_PTR        ds 12
+SCORE_DIGITS_IDX ds 6
+BUTTON_PRESSED   ds 1
 
 ;------------------------------------------------------
-;                  63 | 65 bytes free
+;                  82 | 44 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -81,30 +84,8 @@ Reset:
     lda #15     ; some gray color for the player
     sta COLUP0
 
-    ;set player coordinates
-    lda #69
-    sta PLAYERY
-    sta OLDPLAYERY
-    lda #3
-    sta PLAYERX
-    sta OLDPLAYERX
-    lda #132
     sta RANDOM
 
-    lda #0
-    sta LADDER1X
-    lda #5
-    sta LADDER2X
-    lda #6
-    sta LADDER3X
-    lda #114
-    sta LADDER4X
-    lda #132
-    sta LADDER5X
-
-
-    lda #%00011000
-    sta GRP1
     lda #$C6
     sta COLUP1
 
@@ -112,7 +93,17 @@ Reset:
     sta SCREEN_FRAME
     sta LADDER_IDX
 
-    
+NewGame:
+
+    ;set player coordinates
+    lda #69
+    sta PLAYERY
+    sta OLDPLAYERY
+    lda #3
+    sta PLAYERX
+    sta OLDPLAYERX
+
+
     jsr GenerateMap
 
 
@@ -297,11 +288,9 @@ cont:
     sta RESP0      ;2 reset sprite pos
     sta RESP1
 
-    lda #$0        ;2
     sta HMP0       ;3  reset p1 x offset
     lda #254       ;2  move p2 sprite right a bit
     sta HMP1       ;3 
-    nop            ;2 
     
 
 
@@ -314,34 +303,36 @@ cont:
 
 score_line_loop:
 
-    ldy SCORE_HEIGHT    ;3 52
+    ldy SCORE_HEIGHT    ;3 50
 
-    lda FIVE_GFX,y      ;4 56
-    sta TMPNUM          ;3 59
-    lda ZERO_GFX,y      ;4 63
-    sta GRP0            ;3 66
+    lda (SCORE_PTR),y   ;5 54
+    sta TMPNUM          ;3 57
+    lda (SCORE_PTR+2),y
+    sta TMPNUM1
+
+    lda ZERO_GFX,y      ;5 62
+    sta GRP0            ;3 65
 
     sta WSYNC           ;----------
-    ;sta HMOVE           ;3 3
+    ;sta HMOVE           ;3 
 
-    lda ONE_GFX,y       ;4 7
-    sta GRP1            ;3 10
-    lda TWO_GFX,y       ;4 14
-    sta GRP0            ;3 17
-    lda FOUR_GFX,y      ;4 21
-    tax                 ;2 23
-    lda THREE_GFX,y     ;4 27
-    ldy TMPNUM
+    lda (SCORE_PTR+8),y ;5 4
+    sta GRP1            ;3 7
+    lda (SCORE_PTR+6),y ;5 11
+    sta GRP0            ;3 14
+    ldx TMPNUM1         ;3 17 fifth
+    lda (SCORE_PTR+4),y ;5 27 fourth
+    ldy TMPNUM          ;3 30
 
     sta GRP1            ;3 30
-    stx GRP0            ;3 33
-    sty GRP1            ;3 36 last digit
+    stx GRP0            ;3 33 fifth
+    sty GRP1            ;3 36 last digit, sixth
     sta GRP0            ;3 39
 
-    dec SCORE_HEIGHT    ;5 47
-    ;sta HMCLR          ;3 42 let's clear HM
+    dec SCORE_HEIGHT    ;5 44
 
-    bpl score_line_loop ;2 49
+    bpl score_line_loop ;2 47
+    sta HMCLR           ;3 
 
 ;----------------------------------------
     lda #0
@@ -425,13 +416,8 @@ Overscan:
 notColliding:
     sta CXCLR
 
-    
     jsr ProcessInput
 
-   
-
-
-    
 OverscanLoop:
     sta WSYNC
     lda INTIM
@@ -454,6 +440,19 @@ Vsync:
     sta VSYNC
     rts
 
+
+IncrementScore:
+
+    ldx SCORE_DIGITS_IDX
+    inx
+    cpx #10
+    bne storeDigit
+    ldx #0
+    inc SCORE_DIGITS_IDX+1
+storeDigit:
+    stx SCORE_DIGITS_IDX
+
+    rts
 
 ;---------------------------
 ProcessInput:
@@ -503,7 +502,6 @@ storeframe1:
     sta INPUT
     jmp checkButton
 
-    
 
 checkLeft:
     lda INPUT
@@ -574,6 +572,12 @@ checkButton:
     bmi buttonNotPressed ;jump if the button wasn't pressed
     ;----
 
+    lda BUTTON_PRESSED
+    cmp #1
+    beq noInput
+    lda #1
+    sta BUTTON_PRESSED
+    
     lda #%00011111  ; after 3 x lsr it will turn into 3(4th frame - mining)
     sta PLAYER_FRAME
 
@@ -618,6 +622,9 @@ divy:
     sta TMPNUM1
 
 
+    jsr IncrementScore
+
+    ldx MINED_CELL_X
     lda MAP_3CELLS_INTERSECTIONS,x
     cmp #1
     beq mine_onlyOneSegmentUsed
@@ -630,7 +637,6 @@ divy:
     ldx TMPNUM1
     sta GAMEMAP0,x + 6
 
-    ;jmp doneMining
 
 mine_onlyOneSegmentUsed:
 
@@ -641,18 +647,25 @@ mine_onlyOneSegmentUsed:
     ldx TMPNUM1
     sta GAMEMAP0,x
 
+
 doneMining:
 
     ;----   Let's restore the X
     lda PLAYER_DIR
     cmp #1
-    bne buttonNotPressed
+    bne noInput
     lda PLAYERX
     clc
     sbc #X_OFFSET_TO_RIGHT_FOR_MINING
     sta PLAYERX
 
+    jmp noInput
+
 buttonNotPressed:
+    lda #0
+    sta BUTTON_PRESSED
+
+noInput:
 
     rts
 
@@ -808,7 +821,47 @@ animatePlayer:
     sta PLAYERPTR
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
-    ldx PLAYER_FRAME
+
+    ldx SCORE_DIGITS_IDX
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR+1
+
+    ldx SCORE_DIGITS_IDX+1
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR+2
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR+3
+
+    ldx SCORE_DIGITS_IDX+2
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR+4
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR+5
+
+    ldx SCORE_DIGITS_IDX+3
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR+6
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR+7
+
+    ldx SCORE_DIGITS_IDX+4
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR+8
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR+9
+
+
+    lda PLAYERX
+    cmp #130
+    bcc notReached
+    lda PLAYERY
+    cmp #12
+    bcs notReached
+    jsr NewGame
+notReached:
+
     rts
 ;--------------------------------------------
 ;ROM constants
@@ -824,6 +877,29 @@ DWARF_PTR_HIGH: ; high 8bits of 16bit address
     .byte >(DWARF_GFX_2)
     .byte >(DWARF_GFX_3)
 
+
+DIGITS_PTR_LOW:
+    .byte <(ZERO_GFX)
+    .byte <(ONE_GFX)
+    .byte <(TWO_GFX)
+    .byte <(THREE_GFX)
+    .byte <(FOUR_GFX)
+    .byte <(FIVE_GFX)
+    .byte <(SIX_GFX)
+    .byte <(SEVEN_GFX)
+    .byte <(EIGHT_GFX)
+    .byte <(NINE_GFX)
+DIGITS_PTR_HIGH:
+    .byte >(ZERO_GFX)
+    .byte >(ONE_GFX)
+    .byte >(TWO_GFX)
+    .byte >(THREE_GFX)
+    .byte >(FOUR_GFX)
+    .byte >(FIVE_GFX)
+    .byte >(SIX_GFX)
+    .byte >(SEVEN_GFX)
+    .byte >(EIGHT_GFX)
+    .byte >(NINE_GFX)
 
 DWARF_GFX_0:
     .byte %00000000
@@ -932,7 +1008,7 @@ THREE_GFX:
     .byte %00000000
     .byte %00111100
     .byte %01000110
-    .byte %00000110
+    .byte %01000110
     .byte %00011100
     .byte %00011110
     .byte %01000110
@@ -944,11 +1020,11 @@ FOUR_GFX:
     .byte %00000000
     .byte %00001100
     .byte %00001100
+    .byte %00001100
     .byte %11111110
-    .byte %11111110
-    .byte %01000100
-    .byte %00100100
-    .byte %00010100
+    .byte %01001100
+    .byte %00101100
+    .byte %00011100
     .byte %00001100
 
 FIVE_GFX:
@@ -963,6 +1039,53 @@ FIVE_GFX:
     .byte %01000000
     .byte %01111110
 
+SIX_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00111100
+    .byte %01100110
+    .byte %01100110
+    .byte %01100110
+    .byte %01111100
+    .byte %01100000
+    .byte %00110000
+    .byte %00011100
+
+SEVEN_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00011000
+    .byte %00011000
+    .byte %00011000
+    .byte %00011000
+    .byte %00001100
+    .byte %00001100
+    .byte %00000110
+    .byte %01111110
+
+EIGHT_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00111100
+    .byte %01100110
+    .byte %01100110
+    .byte %00111100
+    .byte %00111100
+    .byte %01100110
+    .byte %01100110
+    .byte %00111100
+
+NINE_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00111000
+    .byte %00001100
+    .byte %00000110
+    .byte %00111110
+    .byte %01000110
+    .byte %01000110
+    .byte %01000110
+    .byte %00111100
 
 
 
