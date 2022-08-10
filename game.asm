@@ -3,11 +3,12 @@
     include "macro.h"
 
 
-MAPHEIGHT = 6
-PLAYERHEIGHT = 9
-LADDERHEIGHT = 11
-LINESPERCELL = 12
-X_OFFSET_TO_RIGHT_FOR_MINING = 6
+MAPHEIGHT                    = 6
+PLAYERHEIGHT                 = 9
+LADDERHEIGHT                 = 11
+LINESPERCELL                 = 12
+DIGITS_PTR_COUNT             = 12
+X_OFFSET_TO_RIGHT_FOR_MINING = 7
 
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
@@ -66,8 +67,8 @@ LADDER_LINE_IDX  ds 1
 PLAYER_LINE_IDX  ds 1
 
 SCORE_HEIGHT     ds 1
-SCORE_PTR        ds 12  ; pointers to digit graphics
-SCORE_DIGITS_IDX ds 6   ;indexes of highscore digits (0..9)
+SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
+SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
@@ -405,11 +406,98 @@ Overscan:
     sta TIM64T
 
     ;some game logic here
-    
 
     bit CXP0FB
     bpl notColliding
     ;so the player is colliding with the playfield
+
+    lda PLAYER_FRAME
+    cmp #%00011111
+    bne notMining
+
+    ;player is coliding with the playfield and swings his axe
+
+    lda PLAYER_DIR
+    cmp #1
+    bne checkCellCollision
+    lda PLAYERX
+    adc #X_OFFSET_TO_RIGHT_FOR_MINING       ;need to add a bit to player x, when it's facing right
+    sta PLAYERX
+
+checkCellCollision:
+
+    lda PLAYERX
+    ldx #0
+divx:
+    inx
+    sbc #12
+    bcs divx
+    dex ;playerX / 12 - 1
+
+    cpx #12
+    bcs doneMining ; nope, the x >= MAPWIDTH
+
+
+    stx MINED_CELL_X;
+
+    lda PLAYERY
+    ldx #0
+divy:
+    inx
+    sbc #12
+    bcs divy
+    dex     ; playerY / 12 - 1
+
+    stx TEMPY
+
+    ldx MINED_CELL_X
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay ; store the cell offset in Y
+
+
+
+    ldx MINED_CELL_X
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq mine_onlyOneSegmentUsed
+    ;Let's change the second segment
+
+    lda GAMEMAP0,y + 6
+    ldx MINED_CELL_X              ;load x coord
+    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    sta GAMEMAP0,y + 6
+
+
+mine_onlyOneSegmentUsed:
+
+    lda GAMEMAP0,y
+    ldx MINED_CELL_X
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    sta GAMEMAP0,y
+
+    ldy #0 ; first digit
+    jsr IncrementScore
+
+doneMining:
+
+    ;----   Let's restore the X
+    lda PLAYER_DIR
+    cmp #1
+    bne notColliding ;let's not reset the animation frame
+    lda PLAYERX
+    clc
+    sbc #X_OFFSET_TO_RIGHT_FOR_MINING
+    sta PLAYERX
+
+    jmp notColliding
+
+notMining:
+
+
+
     lda OLDPLAYERX
     sta PLAYERX
     lda OLDPLAYERY
@@ -418,10 +506,10 @@ Overscan:
     sta PLAYER_FRAME
 
 
+
 notColliding:
     sta CXCLR
 
-    jsr ProcessInput
 
 OverscanLoop:
     sta WSYNC
@@ -576,6 +664,7 @@ moveDown:
     ldx PLAYER_FRAME
     stx OLDPLAYER_FRAME
     sta PLAYER_FRAME
+    jmp noInput
 checkButton:
 ;----------------------------------------------
     bit INPT4   ;checking button press;
@@ -591,84 +680,11 @@ checkButton:
     lda #%00011111  ; after 3 x lsr it will turn into 3(4th frame - mining)
     sta PLAYER_FRAME
 
-    lda PLAYER_DIR
-    cmp #1
-    bne checkCellCollision
-    lda PLAYERX
-    adc #X_OFFSET_TO_RIGHT_FOR_MINING       ;need to add a bit to player x, when it's facing right
-    sta PLAYERX
-
-checkCellCollision:
-
-    lda PLAYERX
-    ldx #0
-divx:
-    inx
-    sbc #12
-    bcs divx
-    dex ;playerX / 12 - 1
-
-    cpx #12
-    bcs doneMining ; nope, the x >= MAPWIDTH
-
-
-    stx MINED_CELL_X;
-
-    lda PLAYERY
-    ldx #0
-divy:
-    inx
-    sbc #12
-    bcs divy
-    dex     ; playerY / 12 - 1
-
-    stx TEMPY
-
-    ldx MINED_CELL_X
-
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    tay ; store the cell offset in Y
-
-
-
-    ldx MINED_CELL_X
-    lda MAP_3CELLS_INTERSECTIONS,x
-    cmp #1
-    beq mine_onlyOneSegmentUsed
-    ;Let's change the second segment
-
-    lda GAMEMAP0,y + 6
-    ldx MINED_CELL_X              ;load x coord
-    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    sta GAMEMAP0,y + 6
-
-
-mine_onlyOneSegmentUsed:
-
-    lda GAMEMAP0,y
-    ldx MINED_CELL_X
-    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    sta GAMEMAP0,y
-
-    ldy #0 ; first digit
-    jsr IncrementScore
-
-doneMining:
-
-    ;----   Let's restore the X
-    lda PLAYER_DIR
-    cmp #1
-    bne noInput
-    lda PLAYERX
-    clc
-    sbc #X_OFFSET_TO_RIGHT_FOR_MINING
-    sta PLAYERX
-
     jmp noInput
 
 buttonNotPressed:
+    ;ldx #0
+    ;stx PLAYER_FRAME
     lda #0
     sta BUTTON_PRESSED
 
@@ -782,6 +798,9 @@ nextLadder:
 ;-------------------------
 VBlank:
 
+    
+    jsr ProcessInput
+
     lda PLAYERX
     ldx #0
     sty WSYNC
@@ -829,35 +848,26 @@ animatePlayer:
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
 
-    ldx SCORE_DIGITS_IDX
-    lda DIGITS_PTR_LOW,x
-    sta SCORE_PTR
-    lda DIGITS_PTR_HIGH,x
-    sta SCORE_PTR+1
+;--------- update score digits
 
-    ldx SCORE_DIGITS_IDX+1
-    lda DIGITS_PTR_LOW,x
-    sta SCORE_PTR+2
-    lda DIGITS_PTR_HIGH,x
-    sta SCORE_PTR+3
+    ldy #0
 
-    ldx SCORE_DIGITS_IDX+2
-    lda DIGITS_PTR_LOW,x
-    sta SCORE_PTR+4
-    lda DIGITS_PTR_HIGH,x
-    sta SCORE_PTR+5
+digitsUpdate:
 
-    ldx SCORE_DIGITS_IDX+3
+    sty TMPNUM ;store Y
+    tya        ; Y -> A
+    lsr        ; Y / 2
+    tay        ; A -> Y
+    ldx SCORE_DIGITS_IDX,y
+    ldy TMPNUM ;restore Y
     lda DIGITS_PTR_LOW,x
-    sta SCORE_PTR+6
+    sta SCORE_PTR,y
+    iny
     lda DIGITS_PTR_HIGH,x
-    sta SCORE_PTR+7
-
-    ldx SCORE_DIGITS_IDX+4
-    lda DIGITS_PTR_LOW,x
-    sta SCORE_PTR+8
-    lda DIGITS_PTR_HIGH,x
-    sta SCORE_PTR+9
+    sta SCORE_PTR,y
+    iny
+    cpy #DIGITS_PTR_COUNT
+    bne digitsUpdate
 
 
     lda PLAYERX
