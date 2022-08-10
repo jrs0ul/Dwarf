@@ -4,11 +4,16 @@
 
 
 MAPHEIGHT                    = 6
+MAPWIDTH                     = 12
 PLAYERHEIGHT                 = 9
 LADDERHEIGHT                 = 11
 LINESPERCELL                 = 12
 DIGITS_PTR_COUNT             = 12
 X_OFFSET_TO_RIGHT_FOR_MINING = 7
+MIN_PLAYER_Y                 = 9
+MAX_PLAYER_Y                 = 69
+GOALX                        = 130
+GOALY                        = 12
 
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
@@ -107,7 +112,7 @@ Main:
 ;--------------------------
 EnterNewMap:
     ;set player coordinates
-    lda #69
+    lda #MAX_PLAYER_Y
     sta PLAYERY
     sta OLDPLAYERY
     lda #3
@@ -365,7 +370,7 @@ score_line_loop:
 
 
     ldy #PLAYERHEIGHT
-    ldx #27 ; remaining lines
+    ldx #26 ; remaining lines
     lda #0
     sta VDELP0
     sta VDELP1
@@ -406,7 +411,8 @@ Overscan:
     sta TIM64T
 
     ;some game logic here
-
+    ;----------
+    ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
     bpl notColliding
     ;so the player is colliding with the playfield
@@ -414,7 +420,6 @@ Overscan:
     lda PLAYER_FRAME
     cmp #%00011111
     bne notMining
-
     ;player is coliding with the playfield and swings his axe
 
     lda PLAYER_DIR
@@ -434,19 +439,22 @@ divx:
     bcs divx
     dex ;playerX / 12 - 1
 
-    cpx #12
+    cpx #MAPWIDTH
     bcs doneMining ; nope, the x >= MAPWIDTH
-
 
     stx MINED_CELL_X;
 
     lda PLAYERY
     ldx #0
 divy:
+    cmp #LINESPERCELL
+    bcc doneDividing
+    sbc #LINESPERCELL
     inx
-    sbc #12
-    bcs divy
-    dex     ; playerY / 12 - 1
+    jmp divy
+doneDividing:
+    cmp #MIN_PLAYER_Y
+    bne notMining   ;don't let mine while climbing the ladders
 
     stx TEMPY
 
@@ -495,8 +503,6 @@ doneMining:
     jmp notColliding
 
 notMining:
-
-
 
     lda OLDPLAYERX
     sta PLAYERX
@@ -655,9 +661,14 @@ moveDown:
     lda PLAYERY
     sec
     sbc #1
-    cmp #9
+    cmp #MIN_PLAYER_Y
     bcc checkButton
+    beq setMinY
     ldx PLAYERY
+    jmp storeOldY
+setMinY:
+    tax
+storeOldY:
     stx OLDPLAYERY
     sta PLAYERY
     lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
@@ -871,10 +882,10 @@ digitsUpdate:
 
 
     lda PLAYERX
-    cmp #130
+    cmp #GOALX
     bcc notReached
     lda PLAYERY
-    cmp #12
+    cmp #GOALY
     bcs notReached
     jsr EnterNewMap
 notReached:
