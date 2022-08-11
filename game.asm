@@ -48,6 +48,7 @@ PLAYERX          ds 1  ; Player's X position
 LAVAX            ds 1
 LAVAY            ds 1
 LAVA_TIMER       ds 1
+LAVA_DIR         ds 1
 
 OLDPLAYERY       ds 1
 OLDPLAYERX       ds 1
@@ -84,10 +85,11 @@ TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
 PLAYER_SPRITE    ds 10
-
+LAD              ds 1
+GENERATING       ds 1
 
 ;------------------------------------------------------
-;                  98 | 30 bytes free
+;                  100 | 28 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -132,7 +134,9 @@ EnterNewMap:
     lda #0
     sta LAVAX
     sta LAVA_TIMER
-    lda #40
+    sta LAVA_DIR
+    sta GENERATING
+    lda #60
     sta LAVAY
 
 
@@ -480,10 +484,10 @@ doneDividing:
     beq mine_onlyOneSegmentUsed
     ;Let's change the second segment
 
-    lda GAMEMAP0,y + 6
+    lda GAMEMAP0,y + MAPHEIGHT
     ldx MINED_CELL_X              ;load x coord
     and MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    sta GAMEMAP0,y + 6
+    sta GAMEMAP0,y + MAPHEIGHT
 
 
 mine_onlyOneSegmentUsed:
@@ -726,6 +730,9 @@ noeor:
 ;-------------------------
 GenerateMap:
 
+    lda #1
+    sta GENERATING
+
     ldx #0
 genloop:
     
@@ -748,7 +755,8 @@ genloop:
     lda #%00000111
     sta GAMEMAP1,x
 
-    ldy #0
+    lda #0
+    sta LAD
     lda #4                      ;inverted first y position
     sta TEMPY
     ;----------
@@ -757,7 +765,14 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     and #11                     ;  limit to 0..11 range
     tax                         ;  and transfer to X register
     lda LADDER_X_POSSITIONS,x
+    ldy LAD
     sta LADDER1X,y              ;  store sprite position to ram variable
+
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay
 
 
     lda MAP_3CELLS_INTERSECTIONS,x
@@ -767,45 +782,24 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     beq onlyOneSegmentUsed
                                 ;two segments used for a map tile
 
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    sta TMPNUM1
-    tax
-    lda GAMEMAP0,x
-    ldx TMPNUM              ;load x coord
-    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    ldx TMPNUM1
-    sta GAMEMAP0,x
-    lda GAMEMAP0,x + MAPHEIGHT
-    ldx TMPNUM              ;load x coord
+    lda GAMEMAP0,y + MAPHEIGHT
     and MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    ldx TMPNUM1
-    sta GAMEMAP0,x + MAPHEIGHT
-
-    jmp nextLadder
+    sta GAMEMAP0,y + MAPHEIGHT
 
 onlyOneSegmentUsed:
 
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    sta TMPNUM1
-    tax
-    lda GAMEMAP0,x
-    ldx TMPNUM
+    lda GAMEMAP0,y
     and MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    ldx TMPNUM1
-    sta GAMEMAP0,x
+    sta GAMEMAP0,y
 
 
 nextLadder:
-    iny
-    lda #5
-    sty TEMPY
-    sbc TEMPY
+    inc LAD
+    lda #4
+    sec
+    sbc LAD
     sta TEMPY 
-    cpy #5
+    cmp #255
     bne ladderLoop
 
 
@@ -830,24 +824,65 @@ DivideLoop
 
 
     rts
-
 ;-------------------------
-VBlank:
+LavaLogic
 
     ldy LAVA_TIMER
     iny
-    cpy #10
+    cpy #2
     bcc lavaSleep
     ldy #0
 
     ldx LAVAX
+    lda LAVA_DIR
+    cmp #0
+    bne moveLavaLeft
     cpx #144
-    bcs lavaSleep
+    bcs rightSideReached
     inx
+    jmp storeLavaX
+moveLavaLeft:
+    dex
+    cpx #0
+    beq leftSideReached
+
+storeLavaX:
     stx LAVAX
+
+    jmp lavaSleep
+leftSideReached:
+    dec LAVA_DIR
+    jmp lowerLava
+rightSideReached:
+    inc LAVA_DIR
+lowerLava:
+    lda LAVAY
+    sec
+    sbc #12
+    sta LAVAY
+
 
 lavaSleep:
     sty LAVA_TIMER
+
+
+
+    rts
+
+
+
+;-------------------------
+VBlank:
+
+    lda GENERATING
+    cmp #1
+    beq notReached
+
+    lda PLAYERY
+    cmp #MAX_PLAYER_Y
+    bcs movePlayer ;start moving lava only when player descended to a lower level
+
+    jsr LavaLogic
 
 movePlayer:
     jsr ProcessInput
@@ -926,6 +961,9 @@ digitsUpdate:
     jsr EnterNewMap
 notReached:
 
+    lda #0
+    sta GENERATING
+
     rts
 ;--------------------------------------------
 ;ROM constants
@@ -942,28 +980,6 @@ DWARF_PTR_HIGH: ; high 8bits of 16bit address
     .byte >(DWARF_GFX_3)
 
 
-DIGITS_PTR_LOW:
-    .byte <(ZERO_GFX)
-    .byte <(ONE_GFX)
-    .byte <(TWO_GFX)
-    .byte <(THREE_GFX)
-    .byte <(FOUR_GFX)
-    .byte <(FIVE_GFX)
-    .byte <(SIX_GFX)
-    .byte <(SEVEN_GFX)
-    .byte <(EIGHT_GFX)
-    .byte <(NINE_GFX)
-DIGITS_PTR_HIGH:
-    .byte >(ZERO_GFX)
-    .byte >(ONE_GFX)
-    .byte >(TWO_GFX)
-    .byte >(THREE_GFX)
-    .byte >(FOUR_GFX)
-    .byte >(FIVE_GFX)
-    .byte >(SIX_GFX)
-    .byte >(SEVEN_GFX)
-    .byte >(EIGHT_GFX)
-    .byte >(NINE_GFX)
 
 DWARF_GFX_0:
     .byte %00000000
@@ -1151,6 +1167,29 @@ NINE_GFX:
     .byte %01000110
     .byte %00111100
 
+DIGITS_PTR_LOW:
+
+    .byte <(ZERO_GFX)
+    .byte <(ONE_GFX)
+    .byte <(TWO_GFX)
+    .byte <(THREE_GFX)
+    .byte <(FOUR_GFX)
+    .byte <(FIVE_GFX)
+    .byte <(SIX_GFX)
+    .byte <(SEVEN_GFX)
+    .byte <(EIGHT_GFX)
+    .byte <(NINE_GFX)
+DIGITS_PTR_HIGH:
+    .byte >(ZERO_GFX)
+    .byte >(ONE_GFX)
+    .byte >(TWO_GFX)
+    .byte >(THREE_GFX)
+    .byte >(FOUR_GFX)
+    .byte >(FIVE_GFX)
+    .byte >(SIX_GFX)
+    .byte >(SEVEN_GFX)
+    .byte >(EIGHT_GFX)
+    .byte >(NINE_GFX)
 
 
 
