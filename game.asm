@@ -169,44 +169,40 @@ Kernel:
     lda PLAYER_FLIP
     sta REFP0
 
-    lda #$FF
-    sta ENABL
-
 
     ldx #72 ; scanlines, max scanlines / 2
 
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
-    cpy #0                  ;2 22
-    beq drawThePlayer       ;2 24 finished drawing one ladder sprite
+    beq drawThePlayer       ;2 27 Zero flag is set, finished drawing one ladder sprite
 
-    lda LADDER_GFX,y        ;4 28
-    sta GRP1                ;3 31
-    dey                     ;2 33
+    lda LADDER_GFX,y        ;4 31
+    sta GRP1                ;3 34
+    dey                     ;2 36
+    sty LADDER_LINE_IDX     ;3 39
 
-    sta HMCLR               ;3 36
+    sta HMCLR               ;3 42
 
 drawThePlayer:
-    sty LADDER_LINE_IDX     ;3 39
-    ldy PLAYER_LINE_IDX     ;3 41
-    cpx PLAYERY             ;3 44     can we draw the player sprite?
-    bcs nope                ;2 46     < PLAYERY
-    cpy #0                  ;2 48     we already went through all sprite lines
-    beq nope                ;2 50
 
-    lda (PLAYERPTR),y       ;5 55    let's load a line from a sprite frame
-    sta GRP0                ;3 58    and store it to the Player0 sprite
-    dec PLAYER_LINE_IDX     ;5 63
+    ldy PLAYER_LINE_IDX     ;3 45
+    beq nope                ;2 47   PLAYER_LINE_IDX == 0
+    cpx PLAYERY             ;3 50   can we draw the player sprite?
+    bcs nope                ;2 52   < PLAYERY
+
+    lda (PLAYERPTR),y       ;5 57    let's load a line from a sprite frame
+    sta GRP0                ;3 60    and store it to the Player0 sprite
+    dec PLAYER_LINE_IDX     ;5 65
 nope:
-    ldy LADDER_LINE_IDX     ;3 66
+    ldy LADDER_LINE_IDX     ;3 68
 
- ;   lda #$FF                ;2 68
- ;   cpx LAVAY               ;3 71
- ;   bcs enableBall          ;2 73
- ;   lda #0                  ;2 75
+    ;lda #$FF                ;2 70
+    ;cpx LAVAY               ;3 73
+    ;bcs enableBall          ;2 75
+    ;lda #0                  ;2 77
 enableBall:
- ;   sta ENABL               ;3 78
+    sta ENABL               ;3 80
 
     
     ;-------------------------------------------------------------------------
@@ -274,22 +270,22 @@ divLoop:
 
     ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
     sta WSYNC
-    sta HMOVE               ;3 3
     ;---------------------------------------------
-    inc LADDER_IDX          ;let's position next ladder
-    dec SCREENMAP_IDX       ;5 8    move to next map cell
-    ldx #LINESPERCELL       ;2 10   reset line count
+    sta HMOVE               ;3 3
+    inc LADDER_IDX          ;5 8    let's position next ladder
+    dec SCREENMAP_IDX       ;5 13   move to next map cell
+    ldx #LINESPERCELL       ;2 15   reset line count
 cont:
-    stx LINE_IDX            ;3 13 save current line count
-    ldx TEMP_X_INDEX        ;3 16 restore X (scanline index)
+    stx LINE_IDX            ;3 18 save current line count
+    ldx TEMP_X_INDEX        ;3 21 restore X (scanline index)
 
     ;---------------------------------------------
-    dex                     ;2 18
-    bne KERNEL_LOOP ;       ;2 20
+    dex                     ;2 23
+    bne KERNEL_LOOP ;       ;2 25
 
     rts
 
-;-----------------------------------------------
+;-------------------------------------------------------------------------------------------------
 
 HUD:
 
