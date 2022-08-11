@@ -45,6 +45,10 @@ LADDER_IDX       ds 1
 PLAYERY          ds 1  ; Player's Y position
 PLAYERX          ds 1  ; Player's X position
 
+LAVAX            ds 1
+LAVAY            ds 1
+LAVA_TIMER       ds 1
+
 OLDPLAYERY       ds 1
 OLDPLAYERX       ds 1
 OLDPLAYER_FRAME  ds 1
@@ -80,7 +84,7 @@ TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
 ;------------------------------------------------------
-;                  82 | 44 bytes free
+;                  84 | 42 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -121,6 +125,12 @@ EnterNewMap:
     sta PLAYERX
     sta OLDPLAYERX
 
+    lda #0
+    sta LAVAX
+    sta LAVA_TIMER
+    lda #40
+    sta LAVAY
+
 
     jsr GenerateMap
 
@@ -134,21 +144,9 @@ Kernel:
 
     sta VBLANK
 
-
-    lda #%00000000
-    sta PF0
-    sta PF1
-    sta PF2
-
-    lda #0
-    sta GRP0 ;let's clear the sprite
-
-
     lda #0
     sta COLUBK      ;set X as the background color
     sta LADDER_IDX
-
-
     
     ldy #PLAYERHEIGHT
     sty PLAYER_LINE_IDX     
@@ -169,10 +167,12 @@ Kernel:
     lda PLAYER_FLIP
     sta REFP0
 
+    lda #$FF
+    sta ENABL
+
 
     ldx #72 ; scanlines, max scanlines / 2
 
-    ;sta WSYNC
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
@@ -803,16 +803,8 @@ nextLadder:
 
 
     rts
-
-
 ;-------------------------
-VBlank:
-
-    
-    jsr ProcessInput
-
-    lda PLAYERX
-    ldx #0
+SetSpriteXPos
     sty WSYNC
     bit 0           ;3 3    waste 3 cycles
     sec             ;2 5    set carry flag
@@ -827,6 +819,38 @@ DivideLoop
 
     sta HMP0,x
     sta RESP0,x
+
+
+    rts
+
+;-------------------------
+VBlank:
+
+    ldy LAVA_TIMER
+    iny
+    cpy #10
+    bcc lavaSleep
+    ldy #0
+
+    ldx LAVAX
+    cpx #144
+    bcs lavaSleep
+    inx
+    stx LAVAX
+
+lavaSleep:
+    sty LAVA_TIMER
+
+movePlayer:
+    jsr ProcessInput
+
+    lda PLAYERX
+    ldx #0
+    jsr SetSpriteXPos
+
+    lda LAVAX
+    ldx #4
+    jsr SetSpriteXPos
 
     sta WSYNC
     sta HMOVE
