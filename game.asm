@@ -15,6 +15,9 @@ MAX_PLAYER_Y                 = 69
 GOALX                        = 130
 GOALY                        = 12
 
+PLAYERS_COLOR                = 15
+LADDERS_COLOR                = $C6
+
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
 
@@ -38,7 +41,6 @@ LADDER4X         ds 1
 LADDER5X         ds 1
 LADDER_IDX       ds 1
 
-TILECOLOR        ds 1
 
 PLAYERY          ds 1  ; Player's Y position
 PLAYERX          ds 1  ; Player's X position
@@ -71,14 +73,14 @@ SCREEN_FRAME     ds 1
 LADDER_LINE_IDX  ds 1
 PLAYER_LINE_IDX  ds 1
 
-SCORE_HEIGHT     ds 1
+SCORE_LINE_IDX   ds 1
 SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
 ;------------------------------------------------------
-;                  83 | 43 bytes free
+;                  82 | 44 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -88,12 +90,12 @@ Reset:
 
     CLEAN_START ; from macro.h
 
-    lda #15     ; some gray color for the player
+    lda #PLAYERS_COLOR
     sta COLUP0
 
     sta RANDOM
 
-    lda #$C6
+    lda #LADDERS_COLOR
     sta COLUP1
 
     lda #0
@@ -161,8 +163,8 @@ Kernel:
     sty LADDER_LINE_IDX
 
 
-    lda TILECOLOR
-    sta COLUPF      ;3 brown bricks
+    lda #$FC        ;brown bricks
+    sta COLUPF
 
     lda PLAYER_FLIP
     sta REFP0
@@ -251,11 +253,11 @@ nope:
     lda LADDER1X,x          ;4 12
     sec                     ;2 14
 divLoop:
-    sbc #15                 ;2 14
-    bcs divLoop             ;3 17
+    sbc #15                 ;2 16
+    bcs divLoop             ;3 19
 
-    tay                     ;2 18
-    lda FINE_ADJUST_TABLE,y ;4 22
+    tay                     ;2 21
+    lda FINE_ADJUST_TABLE,y ;4 25
 
     sta RESP1
     sta HMP1
@@ -287,63 +289,60 @@ cont:
     sta WSYNC   ;let's draw an empty line
     sta HMOVE
 
-    lda #%00000011 ;2 2
-    sta NUSIZ0     ;3 5
-    sta NUSIZ1     ;3 8
+    lda #%00000011      ;2 2
+    sta NUSIZ0          ;3 5
+    sta NUSIZ1          ;3 8
 
-    lda #15        ;2 10
-    sta COLUP1     ;3 13
-    lda #0         ;2 15
+    lda PLAYERS_COLOR   ;2 10
+    sta COLUP1          ;3 13
+    lda #0              ;2 15
     
-    sta REFP0      ;3  turn off mirroring
-    sta RESP0      ;2 reset sprite pos
+    sta REFP0           ;3  turn off mirroring
+    sta RESP0           ;2 reset sprite pos
     sta RESP1
 
-    sta HMP0       ;3  reset p1 x offset
-    lda #254       ;2  move p2 sprite right a bit
-    sta HMP1       ;3 
-    
-
+    ;sta HMP0           ;3  reset p1 x offset
+    ;lda #254           ;2  move p2 sprite right a bit
+    ;sta HMP1           ;3 
 
     ldy #PLAYERHEIGHT
-    sty SCORE_HEIGHT
+    sty SCORE_LINE_IDX
     lda #1
-    sta VDELP0
+    sta VDELP0  ;turn on vertical delay
     sta VDELP1
 
 
 score_line_loop:
 
-    ldy SCORE_HEIGHT    ;3 50
+    ldy SCORE_LINE_IDX  ;3 50
 
-    lda (SCORE_PTR),y   ;5 54
-    sta TMPNUM          ;3 57
-    lda (SCORE_PTR+2),y
-    sta TMPNUM1
+    lda (SCORE_PTR),y   ;5 55
+    sta TMPNUM          ;3 58
+    lda (SCORE_PTR+2),y ;5 63
+    sta TMPNUM1         ;3 66
 
-    lda ZERO_GFX,y      ;5 62
-    sta GRP0            ;3 65
+    lda ZERO_GFX,y      ;4 70 first digit unfortunately inactive
+    sta GRP0            ;3 73
 
     sta WSYNC           ;----------
-    ;sta HMOVE           ;3 
+    ;sta HMOVE           ;3 would love to execute this
 
-    lda (SCORE_PTR+8),y ;5 4
-    sta GRP1            ;3 7
-    lda (SCORE_PTR+6),y ;5 11
-    sta GRP0            ;3 14
-    ldx TMPNUM1         ;3 17 fifth
-    lda (SCORE_PTR+4),y ;5 27 fourth
-    ldy TMPNUM          ;3 30
+    lda (SCORE_PTR+8),y ;5 5
+    sta GRP1            ;3 8
+    lda (SCORE_PTR+6),y ;5 13
+    sta GRP0            ;3 16
+    ldx TMPNUM1         ;3 19 fifth
+    lda (SCORE_PTR+4),y ;5 24 fourth
+    ldy TMPNUM          ;3 27 for some reason this has to be 27, otherwise it doesn't work :-/
 
     sta GRP1            ;3 30
     stx GRP0            ;3 33 fifth
     sty GRP1            ;3 36 last digit, sixth
     sta GRP0            ;3 39
 
-    dec SCORE_HEIGHT    ;5 44
-
+    dec SCORE_LINE_IDX  ;5 44
     bpl score_line_loop ;2 47
-    sta HMCLR           ;3 
+    ;sta HMCLR           ;3 
 
 ;----------------------------------------
     lda #0
@@ -370,7 +369,7 @@ score_line_loop:
 
 
     ldy #PLAYERHEIGHT
-    ldx #26 ; remaining lines
+    ldx #27 ; remaining lines
     lda #0
     sta VDELP0
     sta VDELP1
@@ -833,8 +832,6 @@ DivideLoop
     sta HMOVE
 
 
-    lda #$FC        ;brown bricks
-    sta TILECOLOR
    
     ldy SCREEN_FRAME
     iny
