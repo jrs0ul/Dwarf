@@ -83,9 +83,11 @@ SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
+PLAYER_SPRITE    ds 10
+
 
 ;------------------------------------------------------
-;                  84 | 42 bytes free
+;                  98 | 30 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -191,64 +193,62 @@ drawThePlayer:
     cpx PLAYERY             ;3 50   can we draw the player sprite?
     bcs nope                ;2 52   < PLAYERY
 
-    lda (PLAYERPTR),y       ;5 57    let's load a line from a sprite frame
+    lda PLAYER_SPRITE,y     ;4 57    let's load a line from a sprite frame
     sta GRP0                ;3 60    and store it to the Player0 sprite
     dec PLAYER_LINE_IDX     ;5 65
 nope:
     ldy LADDER_LINE_IDX     ;3 68
+    ;start drawing the ball as this beam
 
-    ;lda #$FF                ;2 70
-    ;cpx LAVAY               ;3 73
-    ;bcs enableBall          ;2 75
-    ;lda #0                  ;2 77
-enableBall:
-    sta ENABL               ;3 80
+    lda #$FF                ;2 70
+    cpx LAVAY               ;3 73
 
-    
-    ;-------------------------------------------------------------------------
+    ;----------------------------------------------------------------
 
     sta WSYNC           ;wait for the scanline to be drawn
 
-    ;---------------DRAW MAP--------------------------------------------------
+    ;----------------------------------------------------------------
 
-    stx TEMP_X_INDEX        ;3 3    save scanline index
+    bcs enableBall          ;2 2    continuing BALL code
+    lda #0                  ;2 5
+enableBall:
+    sta ENABL               ;3 8
+    ;----------------------------------------- only here starts playfield drawing
 
-    ldx SCREENMAP_IDX       ;3 6
+    stx TEMP_X_INDEX        ;3 11    save scanline index
 
-    lda GAMEMAP0,x          ;4 10
-    sta PF0                 ;3 13
+    ldx SCREENMAP_IDX       ;3 14
 
-    lda GAMEMAP1,x          ;4 17
-    sta PF1                 ;3 20
+    lda GAMEMAP0,x          ;4 18
+    sta PF0                 ;3 21
 
-    lda GAMEMAP2,x          ;4 24
-    sta PF2                 ;3 27
+    lda GAMEMAP1,x          ;4 25
+    sta PF1                 ;3 28
+
+    lda GAMEMAP2,x          ;4 32
+    sta PF2                 ;3 35
 
     ;------right side of the screen
 
-    lda GAMEMAP3,x          ;4 31
-    sta PF0                 ;3 34
+    lda GAMEMAP3,x          ;4 39
+    sta PF0                 ;3 42
 
-    nop                     ;2 36
-    nop                     ;2 38
     
-    lda GAMEMAP4,x          ;4 42
-    sta PF1                 ;3 45
+    lda GAMEMAP4,x          ;4 46
+    sta PF1                 ;3 49
     
-    nop                     ;2 47
-    nop                     ;2 49
+    nop                     ;2 51
 
-    lda GAMEMAP5,x          ;4 53
-    sta PF2                 ;3 56
+    lda GAMEMAP5,x          ;4 55
+    sta PF2                 ;3 58
     
     ;--- some code I wanted to place in to this scanline
 
-    lda #0                  ;2 58   Lets turn off the playfield for one scanline
-    ldx LINE_IDX            ;3 61   decrement current line count for one map cell
-
-    sta PF0                 ;3 63
-    sta PF1                 ;3 66
-    dex                     ;2 72
+    lda #0                  ;2 60   Lets turn off the playfield for one scanline
+    ldx LINE_IDX            ;3 63   decrement current line count for one map cell
+    dex                     ;2 65
+    sta PF0                 ;3 68
+    sta PF1                 ;3 71
     ;---------------------------------------------
     sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
     ;---------------------------------------------
@@ -269,6 +269,7 @@ divLoop:
     sta HMP1
 
     ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
+    ;---------------------------------------------
     sta WSYNC
     ;---------------------------------------------
     sta HMOVE               ;3 3
@@ -886,6 +887,13 @@ animatePlayer:
     sta PLAYERPTR
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
+
+    ldy #PLAYERHEIGHT
+copyPlayerSprite:
+    lda (PLAYERPTR),y
+    sta PLAYER_SPRITE,y
+    dey
+    bne copyPlayerSprite
 
 ;--------- update score digits
 
