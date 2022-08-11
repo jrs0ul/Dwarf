@@ -83,6 +83,7 @@ SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1
 
+
 ;------------------------------------------------------
 ;                  84 | 42 bytes free
 ;------------------------------------------------------
@@ -112,7 +113,8 @@ Reset:
 Main:
     jsr Vsync
     jsr VBlank
-    jsr Kernel 
+    jsr Kernel
+    jsr HUD
     jsr Overscan
     jmp Main
 ;--------------------------
@@ -176,29 +178,37 @@ Kernel:
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
-    cpy #0                  ;2 21
-    beq drawThePlayer       ;2 23 finished drawing one ladder sprite
+    cpy #0                  ;2 22
+    beq drawThePlayer       ;2 24 finished drawing one ladder sprite
 
-    lda LADDER_GFX,y        ;4 
-    sta GRP1                ;3
-    dey                     ;2
-    sta HMCLR
+    lda LADDER_GFX,y        ;4 28
+    sta GRP1                ;3 31
+    dey                     ;2 33
+
+    sta HMCLR               ;3 36
 
 drawThePlayer:
-    sty LADDER_LINE_IDX     ;3 41
-    ldy PLAYER_LINE_IDX     ;3 44
-    cpx PLAYERY             ;3 3     can we draw the player sprite?
-    bcs nope                ;2 5     < PLAYERY
-    cpy #0                  ;2 7     we already went through all sprite lines
-    beq nope                ;2 9
+    sty LADDER_LINE_IDX     ;3 39
+    ldy PLAYER_LINE_IDX     ;3 41
+    cpx PLAYERY             ;3 44     can we draw the player sprite?
+    bcs nope                ;2 46     < PLAYERY
+    cpy #0                  ;2 48     we already went through all sprite lines
+    beq nope                ;2 50
 
-    lda (PLAYERPTR),y       ;5 14    let's load a line from a sprite frame
-    sta GRP0                ;3 17    and store it to the Player0 sprite
-    dey                     ;2 19
-    sty PLAYER_LINE_IDX     ;3 21
+    lda (PLAYERPTR),y       ;5 55    let's load a line from a sprite frame
+    sta GRP0                ;3 58    and store it to the Player0 sprite
+    dec PLAYER_LINE_IDX     ;5 63
 nope:
-    ldy LADDER_LINE_IDX     ;3 22
+    ldy LADDER_LINE_IDX     ;3 66
 
+ ;   lda #$FF                ;2 68
+ ;   cpx LAVAY               ;3 71
+ ;   bcs enableBall          ;2 73
+ ;   lda #0                  ;2 75
+enableBall:
+ ;   sta ENABL               ;3 78
+
+    
     ;-------------------------------------------------------------------------
 
     sta WSYNC           ;wait for the scanline to be drawn
@@ -264,23 +274,24 @@ divLoop:
 
     ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
     sta WSYNC
-    sta HMOVE
+    sta HMOVE               ;3 3
     ;---------------------------------------------
     inc LADDER_IDX          ;let's position next ladder
-    dec SCREENMAP_IDX       ;5 10  move to next map cell
-    ldx #LINESPERCELL       ;2  reset line count
+    dec SCREENMAP_IDX       ;5 8    move to next map cell
+    ldx #LINESPERCELL       ;2 10   reset line count
 cont:
-    stx LINE_IDX            ;3 12 save current line count
-    ldx TEMP_X_INDEX        ;3 15 restore X (scanline index)
+    stx LINE_IDX            ;3 13 save current line count
+    ldx TEMP_X_INDEX        ;3 16 restore X (scanline index)
 
     ;---------------------------------------------
-    dex                     ;2 17
-    bne KERNEL_LOOP ;       ;2 19
+    dex                     ;2 18
+    bne KERNEL_LOOP ;       ;2 20
 
-    ;-----------------------------------------------
+    rts
 
+;-----------------------------------------------
 
-
+HUD:
 
     ;let's draw a score
     ;---------------------------------------------
@@ -522,7 +533,7 @@ OverscanLoop:
     bne OverscanLoop
 
     rts
-
+;-----------------------------
 
 Vsync:
 
