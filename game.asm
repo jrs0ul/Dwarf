@@ -14,9 +14,11 @@ MIN_PLAYER_Y                 = 9
 MAX_PLAYER_Y                 = 69
 GOALX                        = 130
 GOALY                        = 12
+LIVES_BG                     = $80
 
 PLAYERS_COLOR                = 15
 LADDERS_COLOR                = $C6
+GROUND_COLOR                 = $FC
 
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
@@ -27,14 +29,14 @@ NO_ILLEGAL_OPCODES = 1 ; DASM needs it
     SEG.U VARS
     ORG $80
 
-GAMEMAP0         ds 6  ;screen map
-GAMEMAP1         ds 6
-GAMEMAP2         ds 6
-GAMEMAP3         ds 6
-GAMEMAP4         ds 6
-GAMEMAP5         ds 6
+GAMEMAP0         ds MAPHEIGHT  ;6 columns of the GameMap, 
+GAMEMAP1         ds MAPHEIGHT  ;single cells are represented as bits
+GAMEMAP2         ds MAPHEIGHT
+GAMEMAP3         ds MAPHEIGHT
+GAMEMAP4         ds MAPHEIGHT
+GAMEMAP5         ds MAPHEIGHT
 
-LADDER1X         ds 1
+LADDER1X         ds 1 ;Ladder X positions
 LADDER2X         ds 1
 LADDER3X         ds 1
 LADDER4X         ds 1
@@ -47,10 +49,10 @@ PLAYERX          ds 1  ; Player's X position
 
 LAVAX            ds 1
 LAVAY            ds 1
-LAVA_TIMER       ds 1
-LAVA_DIR         ds 1
+LAVA_TIMER       ds 1  ;Hazzard's delay
+LAVA_DIR         ds 1  ;Hazzard's direction
 
-OLDPLAYERY       ds 1
+OLDPLAYERY       ds 1   ;Fallback data when player colides with a wall
 OLDPLAYERX       ds 1
 OLDPLAYER_FRAME  ds 1
 
@@ -82,14 +84,14 @@ SCORE_LINE_IDX   ds 1
 SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMP_DIGIT        ds 1
-BUTTON_PRESSED   ds 1
+BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
 
-PLAYER_SPRITE    ds 10
+PLAYER_SPRITE    ds 10  ;temporary player sprite storage in ram
 LAD              ds 1
-GENERATING       ds 1
+GENERATING       ds 1   ;Is the map being generared at the moment?
 
 ;------------------------------------------------------
-;                  100 | 28 bytes free
+;                  101 | 27 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -104,7 +106,7 @@ Reset:
 
     sta RANDOM
 
-    lda #%00010100
+    lda #%00010100 ;make thin ball-ray and the playfield on top of everything
     sta CTRLPF
 
     lda #LADDERS_COLOR
@@ -172,7 +174,7 @@ Kernel:
     sty LADDER_LINE_IDX
 
 
-    lda #$FC        ;brown bricks
+    lda #GROUND_COLOR
     sta COLUPF
 
     lda PLAYER_FLIP
@@ -369,7 +371,7 @@ score_line_loop:
     sta NUSIZ0     ;3 5
     sta NUSIZ1     ;3 8
 
-    lda #65        ;2 10
+    lda #LIVES_BG  ;2 10
     sta COLUBK     ;3 13
     lda #0         ;2 15
     SLEEP 4        ;6 21
@@ -406,14 +408,6 @@ okok1:
     dex
     bne lives_bar_loop
 
-    lda #0
-    sta COLUBK
-    sta NUSIZ0
-    sta NUSIZ1
-    lda #$C6
-    sta COLUP1
-
-
 
     rts
 ;----------------------------
@@ -425,14 +419,14 @@ Overscan:
     sta TIM64T
 
     jmp there
-jumpHere:
+killThePlayer:
     jsr Reset
 there:
     ;some game logic here
     ;----------
     ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
-    bvs jumpHere
+    bvs killThePlayer
     bpl notColliding
     ;so the player is colliding with the playfield
 
@@ -485,7 +479,6 @@ doneDividing:
     tay ; store the cell offset in Y
 
 
-
     ldx MINED_CELL_X
     lda MAP_3CELLS_INTERSECTIONS,x
     cmp #1
@@ -531,9 +524,7 @@ notMining:
     sta PLAYER_FRAME
 
 
-
 notColliding:
-    sta CXCLR
 
 
 OverscanLoop:
@@ -543,7 +534,8 @@ OverscanLoop:
 
     rts
 ;-----------------------------
-
+;Vertical Sync, 3 scanlines long
+;The frame drawing is done
 Vsync:
 
     lda #2
@@ -551,9 +543,21 @@ Vsync:
     sta WSYNC
     sta VSYNC
     stx TIM64T
+    sta CXCLR   ;clear the collision registers
+
     sta WSYNC
+
+    lda #LADDERS_COLOR ; reset the ladder color after the sprite was used to draw the score
+    sta COLUP1
+
     sta WSYNC
+
     lda #0
+    sta COLUBK ;reset the background color
+    sta NUSIZ0 ;reset sprite special params
+    sta NUSIZ1
+
+
     sta WSYNC
     sta VSYNC
     rts
@@ -876,9 +880,6 @@ lavaSleep:
 
 
     rts
-
-
-
 ;-------------------------
 VBlank:
 
@@ -931,7 +932,7 @@ animatePlayer:
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
 
-    ldy #PLAYERHEIGHT
+    ldy #PLAYERHEIGHT   ; copy sprite data from ROM to RAM to save 1 cpu cycle :-)
 copyPlayerSprite:
     lda (PLAYERPTR),y
     sta PLAYER_SPRITE,y
@@ -1176,7 +1177,6 @@ NINE_GFX:
     .byte %00111100
 
 DIGITS_PTR_LOW:
-
     .byte <(ZERO_GFX)
     .byte <(ONE_GFX)
     .byte <(TWO_GFX)
@@ -1248,7 +1248,7 @@ MAP_3CELLS_INTERSECTIONS: ;In how many playfield segments a map tile resides
     .byte 1 ;10
     .byte 1 ;11
 
-MAP_3CELLS_LOOKUP:
+MAP_3CELLS_LOOKUP: ;An offset from the start of GAMEMAP0 based on X
     .byte 0 ;0
     .byte 6 ;1
     .byte 6 ;2
