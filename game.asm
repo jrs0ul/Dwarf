@@ -104,6 +104,9 @@ Reset:
 
     sta RANDOM
 
+    lda #%00010100
+    sta CTRLPF
+
     lda #LADDERS_COLOR
     sta COLUP1
 
@@ -421,10 +424,15 @@ Overscan:
     lda #35
     sta TIM64T
 
+    jmp there
+jumpHere:
+    jsr Reset
+there:
     ;some game logic here
     ;----------
     ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
+    bvs jumpHere
     bpl notColliding
     ;so the player is colliding with the playfield
 
@@ -829,7 +837,7 @@ LavaLogic
 
     ldy LAVA_TIMER
     iny
-    cpy #2
+    cpy #1
     bcc lavaSleep
     ldy #0
 
@@ -879,7 +887,7 @@ VBlank:
     beq notReached
 
     lda PLAYERY
-    cmp #MAX_PLAYER_Y
+    cmp #MAX_PLAYER_Y - 10
     bcs movePlayer ;start moving lava only when player descended to a lower level
 
     jsr LavaLogic
