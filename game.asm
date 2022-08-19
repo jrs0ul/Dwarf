@@ -11,14 +11,14 @@ LINESPERCELL                 = 9
 DIGITS_PTR_COUNT             = 12
 X_OFFSET_TO_RIGHT_FOR_MINING = 7
 MIN_PLAYER_Y                 = 9
-MAX_PLAYER_Y                 = 69
+MAX_PLAYER_Y                 = 54
 GOALX                        = 130
 GOALY                        = 12
 LIVES_BG                     = $80
 
 PLAYERS_COLOR                = 15
 LADDERS_COLOR                = $C6
-GROUND_COLOR                 = $FC
+GROUND_COLOR                 = $16
 LAVA_COLOR                   = $36
 
 
@@ -170,21 +170,22 @@ drawLava:
     lda GAMEMAP3,x          ;4 39
     sta PF0                 ;3 42
 
-    ;nop
+    nop
     
     lda GAMEMAP4,x          ;4 46
     sta PF1                 ;3 49
     
     ;nop                     ;2 51
 
-    lda GAMEMAP5,x          ;4 55
-    sta PF2         
+    ;lda GAMEMAP5,x          ;4 55
+    ;sta PF2         
     
-    ;SLEEP 9
+    ;SLEEP 4
 
     lda #0                  ;2 60   Lets turn off the playfield for one scanline
     sta PF0                 ;3 68
     sta PF1                 ;3 71
+    sta PF2
 
     jmp exitDrawLava
 
@@ -511,14 +512,15 @@ divx:
     lda PLAYERY
     ldx #0
 divy:
-    cmp #LINESPERCELL
+    cmp #10
     bcc doneDividing
-    sbc #LINESPERCELL
+    sec
+    sbc #10
     inx
     jmp divy
 doneDividing:
-    cmp #MIN_PLAYER_Y
-    bne notMining   ;don't let mine while climbing the ladders
+    ;cmp #MIN_PLAYER_Y
+    ;bne notMining   ;don't let mine while climbing the ladders
 
     stx TEMPY
 
@@ -942,7 +944,7 @@ VBlank:
     cmp #MAX_PLAYER_Y - 10
     bcs movePlayer ;start moving lava only when player descended to a lower level
 
-    jsr LavaLogic
+    ;jsr LavaLogic
 
 movePlayer:
     jsr ProcessInput
