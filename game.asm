@@ -7,7 +7,7 @@ MAPHEIGHT                    = 6
 MAPWIDTH                     = 12
 PLAYERHEIGHT                 = 9
 LADDERHEIGHT                 = 11
-LINESPERCELL                 = 12
+LINESPERCELL                 = 9
 DIGITS_PTR_COUNT             = 12
 X_OFFSET_TO_RIGHT_FOR_MINING = 7
 MIN_PLAYER_Y                 = 9
@@ -19,6 +19,7 @@ LIVES_BG                     = $80
 PLAYERS_COLOR                = 15
 LADDERS_COLOR                = $C6
 GROUND_COLOR                 = $FC
+LAVA_COLOR                   = $36
 
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
@@ -149,6 +150,45 @@ EnterNewMap:
 
     rts
 
+;------------------------------------------
+drawLava:
+
+    lda #LAVA_COLOR
+    sta COLUPF
+
+    lda GAMEMAP0,x          ;4 18
+    sta PF0                 ;3 21
+
+    lda GAMEMAP1,x          ;4 25
+    sta PF1                 ;3 28
+
+    lda GAMEMAP2,x          ;4 32
+    sta PF2                 ;3 35
+
+    ;------right side of the screen
+
+    lda GAMEMAP3,x          ;4 39
+    sta PF0                 ;3 42
+
+    ;nop
+    
+    lda GAMEMAP4,x          ;4 46
+    sta PF1                 ;3 49
+    
+    ;nop                     ;2 51
+
+    lda GAMEMAP5,x          ;4 55
+    sta PF2         
+    
+    ;SLEEP 9
+
+    lda #0                  ;2 60   Lets turn off the playfield for one scanline
+    sta PF0                 ;3 68
+    sta PF1                 ;3 71
+
+    jmp exitDrawLava
+
+
 ;--------------------------
 Kernel:
     sta WSYNC
@@ -181,7 +221,7 @@ Kernel:
     sta REFP0
 
 
-    ldx #72 ; scanlines, max scanlines / 2
+    ldx #54 ; scanlines, max scanlines / 2
 
 
 KERNEL_LOOP:
@@ -209,8 +249,8 @@ nope:
     ldy LADDER_LINE_IDX     ;3 68
     ;start drawing the ball as this beam
 
-    lda #$FF                ;2 70
-    cpx LAVAY               ;3 73
+    ;lda #$FF                ;2 70
+    ;cpx LAVAY               ;3 73
 
     ;----------------------------------------------------------------
 
@@ -218,10 +258,12 @@ nope:
 
     ;----------------------------------------------------------------
 
-    bcs enableBall          ;2 2    continuing BALL code
-    lda #0                  ;2 5
-enableBall:
-    sta ENABL               ;3 8
+    ;bcs enableBall          ;2 2    continuing BALL code
+    ;lda #0                  ;2 5
+;enableBall:
+ ;   sta ENABL               ;3 8
+    lda #GROUND_COLOR
+    sta COLUPF
     ;----------------------------------------- only here starts playfield drawing
 
     stx TEMP_X_INDEX        ;3 11    save scanline index
@@ -242,6 +284,7 @@ enableBall:
     lda GAMEMAP3,x          ;4 39
     sta PF0                 ;3 42
 
+    nop
     
     lda GAMEMAP4,x          ;4 46
     sta PF1                 ;3 49
@@ -254,15 +297,23 @@ enableBall:
     ;--- some code I wanted to place in to this scanline
 
     lda #0                  ;2 60   Lets turn off the playfield for one scanline
-    ldx LINE_IDX            ;3 63   decrement current line count for one map cell
-    dex                     ;2 65
     sta PF0                 ;3 68
     sta PF1                 ;3 71
     ;---------------------------------------------
     sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
-    ;---------------------------------------------
     sta PF2                 ;3 3  clearing the remaining playfield register
+
+    jmp drawLava            ;3 6; faking subroutine
+    ;----------------------------
+exitDrawLava:
+
+    ldx LINE_IDX            ;3 63   decrement current line count for one map cell
+    dex                     ;2 65
+
+    sta WSYNC
+    ;---------------------------------------------
     bne cont                ;2 5
+    sta PF2                 ;3 3  clearing the remaining playfield register
 
     ldx LADDER_IDX          ;3 8
     lda LADDER1X,x          ;4 12
@@ -386,7 +437,7 @@ score_line_loop:
 
 
     ldy #PLAYERHEIGHT
-    ldx #27 ; remaining lines
+    ldx #10 ; remaining lines
     lda #0
     sta VDELP0
     sta VDELP1
