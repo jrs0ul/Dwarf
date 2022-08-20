@@ -37,6 +37,13 @@ GAMEMAP3         ds MAPHEIGHT
 GAMEMAP4         ds MAPHEIGHT
 GAMEMAP5         ds MAPHEIGHT
 
+LAVAMAP0         ds MAPHEIGHT
+LAVAMAP1         ds MAPHEIGHT
+LAVAMAP2         ds MAPHEIGHT
+LAVAMAP3         ds MAPHEIGHT
+LAVAMAP4         ds MAPHEIGHT
+LAVAMAP5         ds MAPHEIGHT
+
 LADDER1X         ds 1 ;Ladder X positions
 LADDER2X         ds 1
 LADDER3X         ds 1
@@ -75,7 +82,6 @@ PLAYER_FRAME     ds 1  ;frame index
 TMPNUM           ds 1
 TMPNUM1          ds 1
 TEMPY            ds 1
-MINED_CELL_X     ds 1
 
 SCREEN_FRAME     ds 1
 LADDER_LINE_IDX  ds 1
@@ -84,15 +90,12 @@ PLAYER_LINE_IDX  ds 1
 SCORE_LINE_IDX   ds 1
 SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
-TMP_DIGIT        ds 1
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
 
-PLAYER_SPRITE    ds 10  ;temporary player sprite storage in ram
-LAD              ds 1
 GENERATING       ds 1   ;Is the map being generared at the moment?
 
 ;------------------------------------------------------
-;                  101 | 27 bytes free
+;                  124 | 4 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -151,39 +154,39 @@ EnterNewMap:
     rts
 
 ;------------------------------------------
+; Fake subroutine
 drawLava:
 
     lda #LAVA_COLOR         ;3 9
     sta COLUPF              ;3 12
 
-    lda GAMEMAP0,x          ;4 16
+    lda LAVAMAP0,x          ;4 16
     sta PF0                 ;3 19
 
-    lda GAMEMAP1,x          ;4 23
+    lda LAVAMAP1,x          ;4 23
     sta PF1                 ;3 26
 
-    lda GAMEMAP2,x          ;4 30
+    lda LAVAMAP2,x          ;4 30
     sta PF2                 ;3 33
 
     ;------right side of the screen
 
-    lda GAMEMAP3,x          ;4 37
+    lda LAVAMAP3,x          ;4 37
     sta PF0                 ;3 40
 
     nop                     ;2 42
     
-    lda GAMEMAP4,x          ;4 46
+    lda LAVAMAP4,x          ;4 46
     sta PF1                 ;3 49
     
     nop                     ;2 51
 
-    lda GAMEMAP5,x          ;4 55
+    lda LAVAMAP5,x          ;4 55
     sta PF2                 ;3 58
 
     lda #0                  ;2 60   Lets turn off the playfield for one scanline
     sta PF0                 ;3 63
     sta PF1                 ;3 66
-    ;sta PF2
 
     jmp exitDrawLava        ;3 69
 
@@ -241,7 +244,7 @@ drawThePlayer:
     cpx PLAYERY             ;3 50   can we draw the player sprite?
     bcs nope                ;2 52   < PLAYERY
 
-    lda PLAYER_SPRITE,y     ;4 57    let's load a line from a sprite frame
+    lda (PLAYERPTR),y       ;5 57    let's load a line from a sprite frame
     sta GRP0                ;3 60    and store it to the Player0 sprite
     dec PLAYER_LINE_IDX     ;5 65
 nope:
@@ -507,7 +510,7 @@ divx:
     cpx #MAPWIDTH
     bcs doneMining ; nope, the x >= MAPWIDTH
 
-    stx MINED_CELL_X;
+    stx TMPNUM;
 
     lda PLAYERY
     ldx #0
@@ -524,7 +527,7 @@ doneDividing:
 
     stx TEMPY
 
-    ldx MINED_CELL_X
+    ldx TMPNUM
 
     lda MAP_3CELLS_LOOKUP,x
     clc
@@ -532,14 +535,14 @@ doneDividing:
     tay ; store the cell offset in Y
 
 
-    ldx MINED_CELL_X
+    ldx TMPNUM
     lda MAP_3CELLS_INTERSECTIONS,x
     cmp #1
     beq mine_onlyOneSegmentUsed
     ;Let's change the second segment
 
     lda GAMEMAP0,y + MAPHEIGHT
-    ldx MINED_CELL_X              ;load x coord
+    ldx TMPNUM              ;load x coord
     and MAP_CLEAR_PATTERN_BY_X_SEG2,x
     sta GAMEMAP0,y + MAPHEIGHT
 
@@ -547,7 +550,7 @@ doneDividing:
 mine_onlyOneSegmentUsed:
 
     lda GAMEMAP0,y
-    ldx MINED_CELL_X
+    ldx TMPNUM
     and MAP_CLEAR_PATTERN_BY_X_SEG1,x
     sta GAMEMAP0,y
 
@@ -625,9 +628,9 @@ IncrementScore:
     bne storeDigit
     ldx #0
     iny
-    stx TMP_DIGIT
+    stx TMPNUM
     jsr IncrementScore
-    ldx TMP_DIGIT
+    ldx TMPNUM
     dey
 storeDigit:
     stx SCORE_DIGITS_IDX,y
@@ -819,9 +822,11 @@ genloop:
     sta GAMEMAP0,x
     lda #%00000111
     sta GAMEMAP1,x
+    lda #%10000000
+    sta LAVAMAP0,x
 
     lda #0
-    sta LAD
+    sta LADDER_IDX
     lda #4                      ;inverted first y position
     sta TEMPY
     ;----------
@@ -830,7 +835,7 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     and #11                     ;  limit to 0..11 range
     tax                         ;  and transfer to X register
     lda LADDER_X_POSSITIONS,x
-    ldy LAD
+    ldy LADDER_IDX
     sta LADDER1X,y              ;  store sprite position to ram variable
 
 
@@ -859,10 +864,10 @@ onlyOneSegmentUsed:
 
 
 nextLadder:
-    inc LAD
+    inc LADDER_IDX
     lda #4
     sec
-    sbc LAD
+    sbc LADDER_IDX
     sta TEMPY 
     cmp #255
     bne ladderLoop
@@ -944,7 +949,7 @@ VBlank:
     cmp #MAX_PLAYER_Y - 10
     bcs movePlayer ;start moving lava only when player descended to a lower level
 
-    ;jsr LavaLogic
+    jsr LavaLogic
 
 movePlayer:
     jsr ProcessInput
@@ -984,13 +989,6 @@ animatePlayer:
     sta PLAYERPTR
     lda DWARF_PTR_HIGH,x
     sta PLAYERPTR+1
-
-    ldy #PLAYERHEIGHT   ; copy sprite data from ROM to RAM to save 1 cpu cycle :-)
-copyPlayerSprite:
-    lda (PLAYERPTR),y
-    sta PLAYER_SPRITE,y
-    dey
-    bne copyPlayerSprite
 
 ;--------- update score digits
 
