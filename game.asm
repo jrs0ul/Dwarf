@@ -153,41 +153,39 @@ EnterNewMap:
 ;------------------------------------------
 drawLava:
 
-    lda #LAVA_COLOR
-    sta COLUPF
+    lda #LAVA_COLOR         ;3 9
+    sta COLUPF              ;3 12
 
-    lda GAMEMAP0,x          ;4 18
-    sta PF0                 ;3 21
+    lda GAMEMAP0,x          ;4 16
+    sta PF0                 ;3 19
 
-    lda GAMEMAP1,x          ;4 25
-    sta PF1                 ;3 28
+    lda GAMEMAP1,x          ;4 23
+    sta PF1                 ;3 26
 
-    lda GAMEMAP2,x          ;4 32
-    sta PF2                 ;3 35
+    lda GAMEMAP2,x          ;4 30
+    sta PF2                 ;3 33
 
     ;------right side of the screen
 
-    lda GAMEMAP3,x          ;4 39
-    sta PF0                 ;3 42
+    lda GAMEMAP3,x          ;4 37
+    sta PF0                 ;3 40
 
-    nop
+    nop                     ;2 42
     
     lda GAMEMAP4,x          ;4 46
     sta PF1                 ;3 49
     
-    ;nop                     ;2 51
+    nop                     ;2 51
 
-    ;lda GAMEMAP5,x          ;4 55
-    ;sta PF2         
-    
-    ;SLEEP 4
+    lda GAMEMAP5,x          ;4 55
+    sta PF2                 ;3 58
 
     lda #0                  ;2 60   Lets turn off the playfield for one scanline
-    sta PF0                 ;3 68
-    sta PF1                 ;3 71
-    sta PF2
+    sta PF0                 ;3 63
+    sta PF1                 ;3 66
+    ;sta PF2
 
-    jmp exitDrawLava
+    jmp exitDrawLava        ;3 69
 
 
 ;--------------------------
@@ -301,20 +299,22 @@ nope:
     sta PF0                 ;3 68
     sta PF1                 ;3 71
     ;---------------------------------------------
-    sta WSYNC           ;   finish the scanline, we don't want to cram sprite drawing instructions to be here
+    sta WSYNC               ;finish the scanline, we don't want to cram sprite drawing instructions to be here
+    ;---------------------------------------------
     sta PF2                 ;3 3  clearing the remaining playfield register
 
     jmp drawLava            ;3 6; faking subroutine
     ;----------------------------
+                            ;  69
 exitDrawLava:
 
-    ldx LINE_IDX            ;3 63   decrement current line count for one map cell
-    dex                     ;2 65
-
+    ldx LINE_IDX            ;3 72   decrement current line count for one map cell
+    dex                     ;2 74
+    ;---------------------------------------------
     sta WSYNC
     ;---------------------------------------------
-    bne cont                ;2 5
     sta PF2                 ;3 3  clearing the remaining playfield register
+    bne cont                ;2 5
 
     ldx LADDER_IDX          ;3 8
     lda LADDER1X,x          ;4 12
