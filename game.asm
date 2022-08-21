@@ -59,6 +59,7 @@ LAVAX            ds 1
 LAVAY            ds 1
 LAVA_TIMER       ds 1  ;Hazzard's delay
 LAVA_DIR         ds 1  ;Hazzard's direction
+LAVA_SPEED       ds 1
 
 OLDPLAYERY       ds 1   ;Fallback data when player colides with a wall
 OLDPLAYERX       ds 1
@@ -67,10 +68,8 @@ OLDPLAYER_FRAME  ds 1
 PLAYER_DIR       ds 1  ; Player's direction
 PLAYER_FLIP      ds 1
 
-INPUT            ds 1  ; Input from the joystick
 TEMP_X_INDEX     ds 1  ; Temp variable used in drawing, and in input checking
 
-SCREENMAP_IDX    ds 1  ;index of the screenmap line; used in drawing
 
 LINE_IDX         ds 1  ; line counter for a map cell
 
@@ -85,17 +84,14 @@ TEMPY            ds 1
 
 SCREEN_FRAME     ds 1
 LADDER_LINE_IDX  ds 1
-PLAYER_LINE_IDX  ds 1
 
-SCORE_LINE_IDX   ds 1
 SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
+GENERATING       ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
 
-GENERATING       ds 1   ;Is the map being generared at the moment?
-
 ;------------------------------------------------------
-;                  124 | 4 bytes free
+;                  121 | 7 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -113,12 +109,13 @@ Reset:
     lda #%00010100 ;make thin ball-ray and the playfield on top of everything
     sta CTRLPF
 
-    lda #LADDERS_COLOR
-    sta COLUP1
 
     lda #0
     sta SCREEN_FRAME
     sta LADDER_IDX
+
+    lda #20
+    sta LAVA_SPEED
 
     jsr EnterNewMap
 
@@ -204,10 +201,10 @@ Kernel:
     sta LADDER_IDX
     
     ldy #PLAYERHEIGHT
-    sty PLAYER_LINE_IDX     
+    sty TMPNUM1 ; store player scanline index
 
     lda #MAPHEIGHT-1
-    sta SCREENMAP_IDX ; bottom of the screenmap
+    sta TMPNUM ; bottom of the screenmap
 
     lda #LINESPERCELL
     sta LINE_IDX
@@ -237,14 +234,14 @@ KERNEL_LOOP:
 
 drawThePlayer:
 
-    ldy PLAYER_LINE_IDX     ;3 45
+    ldy TMPNUM1             ;3 45
     beq nope                ;2 47   PLAYER_LINE_IDX == 0
     cpx PLAYERY             ;3 50   can we draw the player sprite?
     bcs nope                ;2 52   < PLAYERY
 
     lda (PLAYERPTR),y       ;5 57    let's load a line from a sprite frame
     sta GRP0                ;3 60    and store it to the Player0 sprite
-    dec PLAYER_LINE_IDX     ;5 65
+    dec TMPNUM1             ;5 65
 nope:
     ldy LADDER_LINE_IDX     ;3 68
 
@@ -260,7 +257,7 @@ nope:
 
     stx TEMP_X_INDEX        ;3 11    save scanline index
 
-    ldx SCREENMAP_IDX       ;3 14
+    ldx TMPNUM       ;3 14
 
     lda GAMEMAP0,x          ;4 18
     sta PF0                 ;3 21
@@ -328,7 +325,7 @@ divLoop:
     ;---------------------------------------------
     sta HMOVE               ;3 3
     inc LADDER_IDX          ;5 8    let's position next ladder
-    dec SCREENMAP_IDX       ;5 13   move to next map cell
+    dec TMPNUM       ;5 13   move to next map cell
     ldx #LINESPERCELL       ;2 15   reset line count
 cont:
     stx LINE_IDX            ;3 18 save current line count
@@ -369,7 +366,7 @@ HUD:
     ;sta HMP1           ;3 
 
     ldy #PLAYERHEIGHT
-    sty SCORE_LINE_IDX
+    sty TEMP_X_INDEX
     lda #1
     sta VDELP0  ;turn on vertical delay
     sta VDELP1
@@ -377,7 +374,7 @@ HUD:
 
 score_line_loop:
 
-    ldy SCORE_LINE_IDX  ;3 50
+    ldy TEMP_X_INDEX  ;3 50
 
     lda (SCORE_PTR),y   ;5 55
     sta TMPNUM          ;3 58
@@ -403,7 +400,7 @@ score_line_loop:
     sty GRP1            ;3 36 last digit, sixth
     sta GRP0            ;3 39
 
-    dec SCORE_LINE_IDX  ;5 44
+    dec TEMP_X_INDEX  ;5 44
     bpl score_line_loop ;2 47
     ;sta HMCLR           ;3 
 
@@ -595,6 +592,9 @@ lava_divx:
     bcs lava_divx
     dex ;playerX / 12 - 1
 
+    cpx #MAPWIDTH
+    bcs notCollidingWithLava ; nope, the x >= MAPWIDTH
+
     stx TMPNUM;
 
     lda PLAYERY
@@ -607,6 +607,8 @@ lava_divy:
     inx
     jmp lava_divy
 lava_doneDividing:
+
+    stx TEMPY
 
 
     ldx TMPNUM
@@ -635,6 +637,8 @@ lava_onlyOneSegmentUsed:
     ldx TMPNUM
     and MAP_FILL_PATTERN_BY_X_SEG1,x
     bne ResetTheGame
+
+notCollidingWithLava:
 
     rts
 ;-------------------------
@@ -690,7 +694,7 @@ storeDigit:
 ProcessInput:
     lda SWCHA
     asl         ;shift left, bit might fall into CARRY flag
-    sta INPUT
+    sta TMPNUM
     bcs checkLeft
 moveRight:
     lda PLAYER_DIR
@@ -729,16 +733,16 @@ storeframe1:
     stx PLAYER_FRAME
 
     ;so left was activated, let's skip right direction
-    lda INPUT
+    lda TMPNUM
     asl
-    sta INPUT
+    sta TMPNUM
     jmp checkButton
 
 
 checkLeft:
-    lda INPUT
+    lda TMPNUM
     asl
-    sta INPUT
+    sta TMPNUM
     bcs checkDown
 moveLeft:
 
@@ -781,9 +785,9 @@ storeframe2:
     jmp checkButton
 
 checkDown:
-    lda INPUT
+    lda TMPNUM
     asl
-    sta INPUT
+    sta TMPNUM
     bcs checkButton
 moveDown:
     lda PLAYERY
@@ -862,6 +866,13 @@ genloop:
     sta GAMEMAP4,x
     lda #%01111111
     sta GAMEMAP5,x
+    lda #0
+    sta LAVAMAP0,x
+    sta LAVAMAP1,x
+    sta LAVAMAP2,x
+    sta LAVAMAP3,x
+    sta LAVAMAP4,x
+    sta LAVAMAP5,x
     inx 
     cpx #6
     bne genloop
@@ -871,8 +882,6 @@ genloop:
     sta GAMEMAP0,x
     lda #%00000111
     sta GAMEMAP1,x
-    ;lda #%10000000
-    ;sta LAVAMAP0,x
 
     lda #0
     sta LADDER_IDX
@@ -948,7 +957,7 @@ LavaLogic
 
     ldy LAVA_TIMER
     iny
-    cpy #20
+    cpy LAVA_SPEED
     bcc lavaSleep
 
     ldx LAVAX
@@ -1091,6 +1100,7 @@ digitsUpdate:
     lda PLAYERY
     cmp #GOALY
     bcs notReached
+    dec LAVA_SPEED
     jsr EnterNewMap
 notReached:
 
