@@ -953,7 +953,7 @@ DivideLoop
 
     rts
 ;-------------------------
-LavaLogic
+LavaLogic:
 
     ldy LAVA_TIMER
     iny
@@ -974,7 +974,7 @@ LavaLogic
     beq onlyONE
     ;Let's change the second segment
 
-    lda LAVAMAP0,y + MAPHEIGHT
+    lda LAVAMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
     ora MAP_FILL_PATTERN_BY_X_SEG2,x
     sta LAVAMAP0,y + MAPHEIGHT
 
@@ -984,9 +984,37 @@ onlyONE:
     sta LAVAMAP0,y
 
 
-    ldy #0
 ;-----
+    lda LAVAY
+    beq moveLavaHorizontaly ; lava is at 0 row
 
+    ; check if there's a hole below
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc LAVAY
+    sec
+    sbc #1
+    tay
+    
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq checkBelow_seg1
+    ;Let's change the second segment
+
+    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
+    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    and MAP_FILL_PATTERN_BY_X_SEG2,x
+    beq lowerLava
+
+checkBelow_seg1:
+    lda GAMEMAP0,y
+    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq lowerLava
+
+;----
+moveLavaHorizontaly
+    ldy #0
 
 
     lda LAVA_DIR
@@ -999,7 +1027,7 @@ onlyONE:
     jmp storeLavaX
 moveLavaLeft:
     dex
-    cpx #255
+    cpx #255 ; "-1" :)
     beq leftSideReached
 
 storeLavaX:
@@ -1012,6 +1040,9 @@ leftSideReached:
 rightSideReached:
     inc LAVA_DIR
 lowerLava:
+    ldy #0 ;reset timer
+    lda LAVAY
+    beq lavaSleep
     dec LAVAY
 
 lavaSleep:
