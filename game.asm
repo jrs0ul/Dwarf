@@ -228,8 +228,6 @@ Kernel:
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
-    beq drawThePlayer       ;2 27 Zero flag is set, finished drawing one ladder sprite
-
     lda LADDER_GFX,y        ;4 31
     sta GRP1                ;3 34
     dey                     ;2 36
@@ -249,10 +247,6 @@ drawThePlayer:
     dec PLAYER_LINE_IDX     ;5 65
 nope:
     ldy LADDER_LINE_IDX     ;3 68
-    ;start drawing the ball as this beam
-
-    ;lda #$FF                ;2 70
-    ;cpx LAVAY               ;3 73
 
     ;----------------------------------------------------------------
 
@@ -260,10 +254,6 @@ nope:
 
     ;----------------------------------------------------------------
 
-    ;bcs enableBall          ;2 2    continuing BALL code
-    ;lda #0                  ;2 5
-;enableBall:
- ;   sta ENABL               ;3 8
     lda #GROUND_COLOR
     sta COLUPF
     ;----------------------------------------- only here starts playfield drawing
