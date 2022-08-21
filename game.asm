@@ -18,8 +18,8 @@ LIVES_BG                     = $80
 
 PLAYERS_COLOR                = 15
 LADDERS_COLOR                = $C6
-GROUND_COLOR                 = $16
-LAVA_COLOR                   = $36
+GROUND_COLOR                 = $96
+LAVA_COLOR                   = $38
 
 
 NO_ILLEGAL_OPCODES = 1 ; DASM needs it
@@ -307,7 +307,7 @@ exitDrawLava:
     sta WSYNC
     ;---------------------------------------------
     sta PF2                 ;3 3  clearing the remaining playfield register
-    bne cont                ;2 5
+    bne cont                ;2 5  not all lines for a cell have been drawn, continue
 
     ldx LADDER_IDX          ;3 8
     lda LADDER1X,x          ;4 12
@@ -337,7 +337,8 @@ cont:
     ;---------------------------------------------
     dex                     ;2 23
     bne KERNEL_LOOP ;       ;2 25
-
+doneDrawing:
+    
     rts
 
 ;-------------------------------------------------------------------------------------------------
@@ -1097,8 +1098,20 @@ LADDER_GFX:
     .byte %01000010
 
 
+DIGITS_PTR_HIGH:
+    .byte >(ZERO_GFX)
+    .byte >(ONE_GFX)
+    .byte >(TWO_GFX)
+    .byte >(THREE_GFX)
+    .byte >(FOUR_GFX)
+    .byte >(FIVE_GFX)
+    .byte >(SIX_GFX)
+    .byte >(SEVEN_GFX)
+    .byte >(EIGHT_GFX)
+    .byte >(NINE_GFX)
+
+
 ZERO_GFX:
-    .byte %00000000
     .byte %00000000
     .byte %00111100
     .byte %01100010
@@ -1111,7 +1124,6 @@ ZERO_GFX:
 
 ONE_GFX:
     .byte %00000000
-    .byte %00000000
     .byte %01111110
     .byte %00011000
     .byte %00011000
@@ -1122,7 +1134,6 @@ ONE_GFX:
     .byte %00001000
 
 TWO_GFX:
-    .byte %00000000
     .byte %00000000
     .byte %01111110
     .byte %00110000
@@ -1135,7 +1146,6 @@ TWO_GFX:
 
 THREE_GFX:
     .byte %00000000
-    .byte %00000000
     .byte %00111100
     .byte %01000110
     .byte %01000110
@@ -1146,7 +1156,6 @@ THREE_GFX:
     .byte %00111100
 
 FOUR_GFX:
-    .byte %00000000
     .byte %00000000
     .byte %00001100
     .byte %00001100
@@ -1159,7 +1168,6 @@ FOUR_GFX:
 
 FIVE_GFX:
     .byte %00000000
-    .byte %00000000
     .byte %00111100
     .byte %01000110
     .byte %00000110
@@ -1170,7 +1178,6 @@ FIVE_GFX:
     .byte %01111110
 
 SIX_GFX:
-    .byte %00000000
     .byte %00000000
     .byte %00111100
     .byte %01100110
@@ -1183,7 +1190,6 @@ SIX_GFX:
 
 SEVEN_GFX:
     .byte %00000000
-    .byte %00000000
     .byte %00011000
     .byte %00011000
     .byte %00011000
@@ -1195,7 +1201,6 @@ SEVEN_GFX:
 
 EIGHT_GFX:
     .byte %00000000
-    .byte %00000000
     .byte %00111100
     .byte %01100110
     .byte %01100110
@@ -1206,7 +1211,6 @@ EIGHT_GFX:
     .byte %00111100
 
 NINE_GFX:
-    .byte %00000000
     .byte %00000000
     .byte %00111000
     .byte %00001100
@@ -1228,17 +1232,6 @@ DIGITS_PTR_LOW:
     .byte <(SEVEN_GFX)
     .byte <(EIGHT_GFX)
     .byte <(NINE_GFX)
-DIGITS_PTR_HIGH:
-    .byte >(ZERO_GFX)
-    .byte >(ONE_GFX)
-    .byte >(TWO_GFX)
-    .byte >(THREE_GFX)
-    .byte >(FOUR_GFX)
-    .byte >(FIVE_GFX)
-    .byte >(SIX_GFX)
-    .byte >(SEVEN_GFX)
-    .byte >(EIGHT_GFX)
-    .byte >(NINE_GFX)
 
 
 
