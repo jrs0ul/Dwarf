@@ -145,7 +145,7 @@ EnterNewMap:
     sta LAVA_TIMER
     sta LAVA_DIR
     sta GENERATING
-    lda #60
+    lda #5
     sta LAVAY
 
 
@@ -464,15 +464,10 @@ Overscan:
     lda #35
     sta TIM64T
 
-    jmp there
-killThePlayer:
-    jsr Reset
-there:
     ;some game logic here
     ;----------
     ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
-    bvs killThePlayer
     bpl notColliding
     ;so the player is colliding with the playfield
 
@@ -561,9 +556,14 @@ doneMining:
 
     jmp notColliding
 
-notMining:
+notMining:           ; some kind of collision
 
-    lda OLDPLAYERX
+                     ;let's check if the player collides with the lava
+
+    jsr CalcLavaCollision
+
+
+    lda OLDPLAYERX   ; let's restore previous player state before the collision
     sta PLAYERX
     lda OLDPLAYERY
     sta PLAYERY
@@ -581,6 +581,64 @@ OverscanLoop:
 
     rts
 ;-----------------------------
+CalcLavaCollision:
+
+    jmp CheckLava
+ResetTheGame:
+    jsr Reset
+CheckLava:
+    lda PLAYERX
+    ldx #0
+lava_divx:
+    inx
+    sbc #12
+    bcs lava_divx
+    dex ;playerX / 12 - 1
+
+    stx TMPNUM;
+
+    lda PLAYERY
+    ldx #0
+lava_divy:
+    cmp #10
+    bcc lava_doneDividing
+    sec
+    sbc #10
+    inx
+    jmp lava_divy
+lava_doneDividing:
+
+
+    ldx TMPNUM
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay ; store the cell offset in Y
+
+
+    ldx TMPNUM
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq lava_onlyOneSegmentUsed
+    ;Let's change the second segment
+
+    lda LAVAMAP0,y + MAPHEIGHT
+    ldx TMPNUM              ;load x coord
+    and MAP_FILL_PATTERN_BY_X_SEG2,x
+    bne ResetTheGame
+
+
+lava_onlyOneSegmentUsed:
+
+    lda LAVAMAP0,y
+    ldx TMPNUM
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne ResetTheGame
+
+    rts
+;-------------------------
+
 ;Vertical Sync, 3 scanlines long
 ;The frame drawing is done
 Vsync:
@@ -813,8 +871,8 @@ genloop:
     sta GAMEMAP0,x
     lda #%00000111
     sta GAMEMAP1,x
-    lda #%10000000
-    sta LAVAMAP0,x
+    ;lda #%10000000
+    ;sta LAVAMAP0,x
 
     lda #0
     sta LADDER_IDX
@@ -890,21 +948,49 @@ LavaLogic
 
     ldy LAVA_TIMER
     iny
-    cpy #1
+    cpy #20
     bcc lavaSleep
-    ldy #0
 
     ldx LAVAX
+
+    ;-----
+    
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc LAVAY
+    tay ; store the cell offset in Y
+
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq onlyONE
+    ;Let's change the second segment
+
+    lda LAVAMAP0,y + MAPHEIGHT
+    ora MAP_FILL_PATTERN_BY_X_SEG2,x
+    sta LAVAMAP0,y + MAPHEIGHT
+
+onlyONE:
+    lda LAVAMAP0,y
+    ora MAP_FILL_PATTERN_BY_X_SEG1,x
+    sta LAVAMAP0,y
+
+
+    ldy #0
+;-----
+
+
+
     lda LAVA_DIR
     cmp #0
     bne moveLavaLeft
-    cpx #144
+    cpx #11
     bcs rightSideReached
+
     inx
     jmp storeLavaX
 moveLavaLeft:
     dex
-    cpx #0
+    cpx #255
     beq leftSideReached
 
 storeLavaX:
@@ -917,11 +1003,7 @@ leftSideReached:
 rightSideReached:
     inc LAVA_DIR
 lowerLava:
-    lda LAVAY
-    sec
-    sbc #12
-    sta LAVAY
-
+    dec LAVAY
 
 lavaSleep:
     sty LAVA_TIMER
@@ -1324,6 +1406,36 @@ MAP_CLEAR_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfi
     .byte %11111110 ;9 second part
     .byte %00000000 ;10
     .byte %00000000 ;11
+
+MAP_FILL_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they contains a patter used with AND
+    .byte %10000000 ;0 first part
+    .byte %00111000 ;1
+    .byte %00000111 ;2
+    .byte %00000111 ;3
+    .byte %00111000 ;4
+    .byte %11000000 ;5 first part
+    .byte %11100000 ;6
+    .byte %11100000 ;7
+    .byte %00011100 ;8
+    .byte %00000011 ;9 first part
+    .byte %00001110 ;10
+    .byte %01110000 ;11
+
+
+MAP_FILL_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfield registers, this is the second part
+    .byte %11000000 ;0 second part
+    .byte %00000000 ;1
+    .byte %00000000 ;2
+    .byte %00000000 ;3
+    .byte %00000000 ;4
+    .byte %00010000 ;5 second part
+    .byte %00000000 ;6
+    .byte %00000000 ;7
+    .byte %00000000 ;8
+    .byte %00000001 ;9 second part
+    .byte %00000000 ;10
+    .byte %00000000 ;11
+
 
     ;------------------------------------------
     ; free space check 
