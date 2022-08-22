@@ -147,7 +147,87 @@ EnterNewMap:
     sta LAVAY
 
 
-    jsr GenerateMap
+    lda #1
+    sta GENERATING
+
+    ldx #0
+genloop:
+    
+    lda #%10000000
+    sta GAMEMAP0,x
+    lda #$FF
+    sta GAMEMAP1,x
+    sta GAMEMAP2,x
+    sta GAMEMAP3,x
+    sta GAMEMAP4,x
+    lda #%01111111
+    sta GAMEMAP5,x
+    lda #0
+    sta LAVAMAP0,x
+    sta LAVAMAP1,x
+    sta LAVAMAP2,x
+    sta LAVAMAP3,x
+    sta LAVAMAP4,x
+    sta LAVAMAP5,x
+    inx 
+    cpx #6
+    bne genloop
+
+    ldx #5
+    lda #0
+    sta GAMEMAP0,x
+    lda #%00000111
+    sta GAMEMAP1,x
+
+    lda #0
+    sta LADDER_IDX
+    lda #4                      ;inverted first y position
+    sta TEMPY
+    ;----------
+ladderLoop:                     ;  let's generate a ladder for each of the map rows
+    jsr UpdateRandomNumber
+    and #11                     ;  limit to 0..11 range
+    tax                         ;  and transfer to X register
+    lda LADDER_X_POSSITIONS,x
+    ldy LADDER_IDX
+    sta LADDER1X,y              ;  store sprite position to ram variable
+
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay
+
+
+    lda MAP_3CELLS_INTERSECTIONS,x
+    stx TMPNUM                  ;store x
+
+    cmp #1
+    beq onlyOneSegmentUsed
+                                ;two segments used for a map tile
+
+    lda GAMEMAP0,y + MAPHEIGHT
+    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    sta GAMEMAP0,y + MAPHEIGHT
+
+onlyOneSegmentUsed:
+
+    lda GAMEMAP0,y
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    sta GAMEMAP0,y
+
+
+nextLadder:
+    inc LADDER_IDX
+    lda #4
+    sec
+    sbc LADDER_IDX
+    sta TEMPY 
+    cmp #255
+    bne ladderLoop
+
+
+
 
     rts
 
@@ -870,87 +950,7 @@ noeor:
 ;-------------------------
 GenerateMap:
 
-    lda #1
-    sta GENERATING
-
-    ldx #0
-genloop:
     
-    lda #%10000000
-    sta GAMEMAP0,x
-    lda #$FF
-    sta GAMEMAP1,x
-    sta GAMEMAP2,x
-    sta GAMEMAP3,x
-    sta GAMEMAP4,x
-    lda #%01111111
-    sta GAMEMAP5,x
-    lda #0
-    sta LAVAMAP0,x
-    sta LAVAMAP1,x
-    sta LAVAMAP2,x
-    sta LAVAMAP3,x
-    sta LAVAMAP4,x
-    sta LAVAMAP5,x
-    inx 
-    cpx #6
-    bne genloop
-
-    ldx #5
-    lda #0
-    sta GAMEMAP0,x
-    lda #%00000111
-    sta GAMEMAP1,x
-
-    lda #0
-    sta LADDER_IDX
-    lda #4                      ;inverted first y position
-    sta TEMPY
-    ;----------
-ladderLoop:                     ;  let's generate a ladder for each of the map rows
-    jsr UpdateRandomNumber
-    and #11                     ;  limit to 0..11 range
-    tax                         ;  and transfer to X register
-    lda LADDER_X_POSSITIONS,x
-    ldy LADDER_IDX
-    sta LADDER1X,y              ;  store sprite position to ram variable
-
-
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    tay
-
-
-    lda MAP_3CELLS_INTERSECTIONS,x
-    stx TMPNUM                  ;store x
-
-    cmp #1
-    beq onlyOneSegmentUsed
-                                ;two segments used for a map tile
-
-    lda GAMEMAP0,y + MAPHEIGHT
-    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    sta GAMEMAP0,y + MAPHEIGHT
-
-onlyOneSegmentUsed:
-
-    lda GAMEMAP0,y
-    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    sta GAMEMAP0,y
-
-
-nextLadder:
-    inc LADDER_IDX
-    lda #4
-    sec
-    sbc LADDER_IDX
-    sta TEMPY 
-    cmp #255
-    bne ladderLoop
-
-
-
     rts
 ;-------------------------
 SetSpriteXPos
