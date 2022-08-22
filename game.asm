@@ -89,9 +89,10 @@ SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 GENERATING       ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
+GAME_OVER_TIMER  ds 1
 
 ;------------------------------------------------------
-;                  121 | 7 bytes free
+;                  122 | 6 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -582,6 +583,7 @@ CalcLavaCollision:
 
     jmp CheckLava
 ResetTheGame:
+    
     jsr Reset
 CheckLava:
     lda PLAYERX
@@ -810,6 +812,9 @@ storeOldY:
     jmp noInput
 checkButton:
 ;----------------------------------------------
+
+    lda #0
+    sta AUDV0
     bit INPT4   ;checking button press;
     bmi buttonNotPressed ;jump if the button wasn't pressed
     ;----
@@ -823,11 +828,16 @@ checkButton:
     lda #%00011111  ; after 3 x lsr it will turn into 3(4th frame - mining)
     sta PLAYER_FRAME
 
+    lda #2
+    sta AUDC0
+    lda #1
+    sta AUDF0
+    lda #6
+    sta AUDV0
+
     jmp noInput
 
 buttonNotPressed:
-    ;ldx #0
-    ;stx PLAYER_FRAME
     lda #0
     sta BUTTON_PRESSED
 
@@ -952,6 +962,41 @@ DivideLoop
 
 
     rts
+;------------------------
+;fake subroutine
+CheckLowerGroundTile:
+
+    lda LAVAY
+    beq moveLavaHorizontaly ; lava is at 0 row
+
+    ; check if there's a hole below
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc LAVAY
+    sec
+    sbc #1
+    tay
+    
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq checkBelow_seg1
+    ;Let's change the second segment
+
+    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
+    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    and MAP_FILL_PATTERN_BY_X_SEG2,x
+    beq lowerLava
+
+checkBelow_seg1:
+    lda GAMEMAP0,y
+    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq lowerLava
+
+
+    jmp exitLowerTileCheck
+
+
 ;-------------------------
 LavaLogic:
 
@@ -985,35 +1030,10 @@ onlyONE:
 
 
 ;-----
-    lda LAVAY
-    beq moveLavaHorizontaly ; lava is at 0 row
-
-    ; check if there's a hole below
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc LAVAY
-    sec
-    sbc #1
-    tay
-    
-    lda MAP_3CELLS_INTERSECTIONS,x
-    cmp #1
-    beq checkBelow_seg1
-    ;Let's change the second segment
-
-    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
-    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    and MAP_FILL_PATTERN_BY_X_SEG2,x
-    beq lowerLava
-
-checkBelow_seg1:
-    lda GAMEMAP0,y
-    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    and MAP_FILL_PATTERN_BY_X_SEG1,x
-    beq lowerLava
-
+    jmp CheckLowerGroundTile
+exitLowerTileCheck:
 ;----
-moveLavaHorizontaly
+moveLavaHorizontaly:
     ldy #0
 
 
@@ -1022,11 +1042,19 @@ moveLavaHorizontaly
     bne moveLavaLeft
     cpx #11
     bcs rightSideReached
-
     inx
+;-------
+    jmp CheckGroundTilesRight
+exitRightTilesCheck:
+;-------
     jmp storeLavaX
+
 moveLavaLeft:
     dex
+;------
+    jmp CheckGroundTilesLeft
+exitLeftTilesCheck:
+;------
     cpx #255 ; "-1" :)
     beq leftSideReached
 
@@ -1036,22 +1064,84 @@ storeLavaX:
     jmp lavaSleep
 leftSideReached:
     dec LAVA_DIR
-    jmp lowerLava
+    jmp lavaSleep
 rightSideReached:
+    ldy #0
     inc LAVA_DIR
+    jmp lavaSleep
 lowerLava:
     ldy #0 ;reset timer
     lda LAVAY
-    beq lavaSleep
+    beq lavaSleep ; don't let the lava to overflow
     dec LAVAY
 
 lavaSleep:
     sty LAVA_TIMER
 
-
-
     rts
 ;-------------------------
+;fake subroutine
+CheckGroundTilesRight:
+
+    ; check if it's possible to move right
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc LAVAY
+    tay
+    
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq checkRight_seg1
+    ;Let's change the second segment
+
+    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
+    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    and MAP_FILL_PATTERN_BY_X_SEG2,x
+    bne rightSideReached
+
+checkRight_seg1:
+    lda GAMEMAP0,y
+    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne rightSideReached
+
+    ldy #0
+
+    jmp exitRightTilesCheck
+
+
+;fake subroutine
+CheckGroundTilesLeft:
+
+    ; check if it's possible to move right
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc LAVAY
+    tay
+    
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq checkLeft_seg1
+    ;Let's change the second segment
+
+    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
+    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    and MAP_FILL_PATTERN_BY_X_SEG2,x
+    bne leftSideReached
+
+checkLeft_seg1:
+    lda GAMEMAP0,y
+    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne leftSideReached
+
+    ldy #0
+
+    jmp exitLeftTilesCheck
+
+
+
+
 VBlank:
 
     lda GENERATING
@@ -1140,7 +1230,38 @@ notReached:
 
     rts
 ;--------------------------------------------
+    if (* & $FF)
+        echo "------", [$FBFA - *]d, "bytes free before End of code"
+        align 256
+    endif
+
 ;ROM constants
+    ORG $FBF4
+
+DIGITS_PTR_LOW:
+    .byte <(ZERO_GFX)
+    .byte <(ONE_GFX)
+    .byte <(TWO_GFX)
+    .byte <(THREE_GFX)
+    .byte <(FOUR_GFX)
+    .byte <(FIVE_GFX)
+    .byte <(SIX_GFX)
+    .byte <(SEVEN_GFX)
+    .byte <(EIGHT_GFX)
+    .byte <(NINE_GFX)
+
+DIGITS_PTR_HIGH:
+    .byte >(ZERO_GFX)
+    .byte >(ONE_GFX)
+    .byte >(TWO_GFX)
+    .byte >(THREE_GFX)
+    .byte >(FOUR_GFX)
+    .byte >(FIVE_GFX)
+    .byte >(SIX_GFX)
+    .byte >(SEVEN_GFX)
+    .byte >(EIGHT_GFX)
+    .byte >(NINE_GFX)
+
 
 DWARF_PTR_LOW:  ; low 8bits of 16bit address
     .byte <(DWARF_GFX_0)
@@ -1155,84 +1276,8 @@ DWARF_PTR_HIGH: ; high 8bits of 16bit address
 
 
 
-DWARF_GFX_0:
-    .byte %00000000
-    .byte %00000000
-    .byte %01000100
-    .byte %00101000
-    .byte %00110000
-    .byte %10110100
-    .byte %10111000
-    .byte %01110000
-    .byte %00100000
-    .byte %00110000
-
-DWARF_GFX_1:
-    .byte %00000000
-    .byte %00000000
-    .byte %00110000
-    .byte %00100000
-    .byte %00110000
-    .byte %01010000
-    .byte %01010000
-    .byte %01110000
-    .byte %00100000
-    .byte %00110000
-
-DWARF_GFX_2:
-    .byte %00000000
-    .byte %00000000
-    .byte %00100100
-    .byte %00100100
-    .byte %00011000
-    .byte %00011000
-    .byte %01011010
-    .byte %00111100
-    .byte %00011000
-    .byte %00011000
-
-DWARF_GFX_3:
-    .byte %00000000
-    .byte %00000000
-    .byte %01000100
-    .byte %00101000
-    .byte %00110000
-    .byte %10110101
-    .byte %10111101
-    .byte %01110011
-    .byte %00100110
-    .byte %00110000
 
 ;-------------------------------------------
-
-
-LADDER_GFX:
-    .byte %00000000
-    .byte %00000000
-    .byte %00000000
-    .byte %01000010
-    .byte %01111110
-    .byte %01000010
-    .byte %01111110
-    .byte %01000010
-    .byte %01111110
-    .byte %01000010
-    .byte %01111110
-    .byte %01000010
-
-
-DIGITS_PTR_HIGH:
-    .byte >(ZERO_GFX)
-    .byte >(ONE_GFX)
-    .byte >(TWO_GFX)
-    .byte >(THREE_GFX)
-    .byte >(FOUR_GFX)
-    .byte >(FIVE_GFX)
-    .byte >(SIX_GFX)
-    .byte >(SEVEN_GFX)
-    .byte >(EIGHT_GFX)
-    .byte >(NINE_GFX)
-
 
 ZERO_GFX:
     .byte %00000000
@@ -1344,19 +1389,67 @@ NINE_GFX:
     .byte %01000110
     .byte %00111100
 
-DIGITS_PTR_LOW:
-    .byte <(ZERO_GFX)
-    .byte <(ONE_GFX)
-    .byte <(TWO_GFX)
-    .byte <(THREE_GFX)
-    .byte <(FOUR_GFX)
-    .byte <(FIVE_GFX)
-    .byte <(SIX_GFX)
-    .byte <(SEVEN_GFX)
-    .byte <(EIGHT_GFX)
-    .byte <(NINE_GFX)
+DWARF_GFX_0:
+    .byte %00000000
+    .byte %00000000
+    .byte %01000100
+    .byte %00101000
+    .byte %00110000
+    .byte %10110100
+    .byte %10111000
+    .byte %01110000
+    .byte %00100000
+    .byte %00110000
 
+DWARF_GFX_1:
+    .byte %00000000
+    .byte %00000000
+    .byte %00110000
+    .byte %00100000
+    .byte %00110000
+    .byte %01010000
+    .byte %01010000
+    .byte %01110000
+    .byte %00100000
+    .byte %00110000
 
+DWARF_GFX_2:
+    .byte %00000000
+    .byte %00000000
+    .byte %00100100
+    .byte %00100100
+    .byte %00011000
+    .byte %00011000
+    .byte %01011010
+    .byte %00111100
+    .byte %00011000
+    .byte %00011000
+
+DWARF_GFX_3:
+    .byte %00000000
+    .byte %00000000
+    .byte %01000100
+    .byte %00101000
+    .byte %00110000
+    .byte %10110101
+    .byte %10111101
+    .byte %01110011
+    .byte %00100110
+    .byte %00110000
+
+LADDER_GFX:
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
+    .byte %01111110
+    .byte %01000010
 
 FINE_ADJUST_BEGIN:      ;HMPx sprite movement lookup table
     .byte %01110000; Left 7 
@@ -1433,7 +1526,6 @@ MAP_CLEAR_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they c
     .byte %11110001 ;10
     .byte %10001111 ;11
 
-
 MAP_CLEAR_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfield registers, this is the second part
     .byte %00111111 ;0 second part
     .byte %00000000 ;1
@@ -1447,6 +1539,9 @@ MAP_CLEAR_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfi
     .byte %11111110 ;9 second part
     .byte %00000000 ;10
     .byte %00000000 ;11
+
+
+    ORG $FCF3 ; next data page
 
 MAP_FILL_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they contains a patter used with AND
     .byte %10000000 ;0 first part
@@ -1477,11 +1572,12 @@ MAP_FILL_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfie
     .byte %00000000 ;10
     .byte %00000000 ;11
 
+    ;24 bytes used of 256
+
 
     ;------------------------------------------
-    ; free space check 
     if (* & $FF)
-        echo "------", [$FFFA - *]d, "bytes free before End of Cartridge"
+        echo "------", [$FFFA - *]d, "bytes free before End of data"
         align 256
     endif
     ;------------------------------------------------------------------------------
