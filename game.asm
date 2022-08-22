@@ -51,7 +51,6 @@ LADDER4X         ds 1
 LADDER5X         ds 1
 LADDER_IDX       ds 1
 
-
 PLAYERY          ds 1  ; Player's Y position
 PLAYERX          ds 1  ; Player's X position
 
@@ -67,11 +66,8 @@ OLDPLAYER_FRAME  ds 1
 
 PLAYER_DIR       ds 1  ; Player's direction
 PLAYER_FLIP      ds 1
+PLAYER_LIVES     ds 1
 
-TEMP_X_INDEX     ds 1  ; Temp variable used in drawing, and in input checking
-
-
-LINE_IDX         ds 1  ; line counter for a map cell
 
 RANDOM           ds 1  ;random 8bit number
 
@@ -79,20 +75,22 @@ PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME     ds 1  ;frame index
 
 GAME_OVER_TIMER  ds 1
+SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMPNUM           ds 1
 TMPNUM1          ds 1
 TEMPY            ds 1
+TEMP_X_INDEX     ds 1  ; Temp variable used in drawing, and in input checking
 
 SCREEN_FRAME     ds 1
 LADDER_LINE_IDX  ds 1
+LINE_IDX         ds 1  ; line counter for a map cell
 
 SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
-SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 GENERATING       ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
 
 ;------------------------------------------------------
-;                  122 | 6 bytes free
+;                  123 | 5 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -677,15 +675,26 @@ ResetTheGame:
 CheckLava:
     lda PLAYERX
     ldx #0
+    sec
+    sbc #1
 lava_divx:
-    inx
+    cmp #12
+    bcc lava_doneDividingX
+    sec
     sbc #12
-    bcs lava_divx
-    dex ;playerX / 12 - 1
+    inx
+    jmp lava_divx
+lava_doneDividingX:
+    cmp #6
+    bcc lava_checkBoundsX
+    inx
 
+lava_checkBoundsX:
     cpx #MAPWIDTH
-    bcs notCollidingWithLava ; nope, the x >= MAPWIDTH
+    bcc lava_storeX ; the x < MAPWIDTH, let's clamp it
 
+    ldx #MAPWIDTH - 1 ; let's clamp X
+lava_storeX:
     stx TMPNUM;
 
     lda PLAYERY
@@ -796,7 +805,7 @@ moveRight:
     sta PLAYER_FLIP
     lda #12
     sta PLAYER_FRAME
-    inc PLAYERX
+    inc PLAYERX ; add +2 to prevent getting stuck in a wall
     inc PLAYERX
 itWasFacingRightAlready:
 
