@@ -116,6 +116,9 @@ Reset:
     lda #20
     sta LAVA_SPEED
 
+    lda #2
+    sta PLAYER_LIVES
+
     jsr EnterNewMap
 
 
@@ -1157,6 +1160,43 @@ checkLeft_seg1:
 
     jmp exitLeftTilesCheck
 
+;-----------------------------------------------------
+UpdateSpriteFrames:
+
+    ;set the frame for the sprite
+    lda PLAYER_FRAME
+    lsr ;shift left by 3 bits 00000111 -> 0, 00001111 -> 1
+    lsr
+    lsr
+    ;we have to skip 8 screen frames to get first animation frame change
+    tax
+    lda DWARF_PTR_LOW,x
+    sta PLAYERPTR
+    lda DWARF_PTR_HIGH,x
+    sta PLAYERPTR+1
+
+;--------- update score digits
+
+    ldy #0
+
+digitsUpdate:
+
+    sty TMPNUM ;store Y
+    tya        ; Y -> A
+    lsr        ; Y / 2
+    tay        ; A -> Y
+    ldx SCORE_DIGITS_IDX,y
+    ldy TMPNUM ;restore Y
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR,y
+    iny
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR,y
+    iny
+    cpy #DIGITS_PTR_COUNT
+    bne digitsUpdate
+
+    rts
 
 ;------------------------------------------------------
 
@@ -1164,6 +1204,14 @@ VBlank:
 
     jmp there
 ResetThatGame:
+    ldx #0
+    stx GAME_OVER_TIMER
+    stx AUDV1
+    ldx PLAYER_LIVES
+    dex
+    stx PLAYER_LIVES
+    cpx #0
+    bne enterNew
     jsr Reset
 there:
     lda GENERATING
@@ -1216,41 +1264,7 @@ continueVBlank:
     sty SCREEN_FRAME
 
 
-animatePlayer:
-
-    ;set the frame for the sprite
-    lda PLAYER_FRAME
-    lsr ;shift left by 3 bits 00000111 -> 0, 00001111 -> 1
-    lsr
-    lsr
-    ;we have to skip 8 screen frames to get first animation frame change
-    tax
-    lda DWARF_PTR_LOW,x
-    sta PLAYERPTR
-    lda DWARF_PTR_HIGH,x
-    sta PLAYERPTR+1
-
-;--------- update score digits
-
-    ldy #0
-
-digitsUpdate:
-
-    sty TMPNUM ;store Y
-    tya        ; Y -> A
-    lsr        ; Y / 2
-    tay        ; A -> Y
-    ldx SCORE_DIGITS_IDX,y
-    ldy TMPNUM ;restore Y
-    lda DIGITS_PTR_LOW,x
-    sta SCORE_PTR,y
-    iny
-    lda DIGITS_PTR_HIGH,x
-    sta SCORE_PTR,y
-    iny
-    cpy #DIGITS_PTR_COUNT
-    bne digitsUpdate
-
+    jsr UpdateSpriteFrames
 
     lda PLAYERX
     cmp #GOALX
@@ -1259,6 +1273,7 @@ digitsUpdate:
     cmp #GOALY
     bcs notReached
     dec LAVA_SPEED
+enterNew:
     jsr EnterNewMap
 notReached:
 
