@@ -78,6 +78,7 @@ RANDOM           ds 1  ;random 8bit number
 PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME     ds 1  ;frame index
 
+GAME_OVER_TIMER  ds 1
 TMPNUM           ds 1
 TMPNUM1          ds 1
 TEMPY            ds 1
@@ -89,7 +90,6 @@ SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 GENERATING       ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
-GAME_OVER_TIMER  ds 1
 
 ;------------------------------------------------------
 ;                  122 | 6 bytes free
@@ -673,7 +673,7 @@ ResetTheGame:
     lda #64
     sta GAME_OVER_TIMER
     jmp notCollidingWithLava
-    ;jsr Reset
+
 CheckLava:
     lda PLAYERX
     ldx #0
