@@ -464,6 +464,9 @@ Overscan:
 
     ;some game logic here
     ;----------
+    lda GAME_OVER_TIMER
+    bne notColliding
+
     ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
     bpl notColliding
@@ -508,35 +511,9 @@ divy:
 doneDividing:
     ;cmp #MIN_PLAYER_Y
     ;bne notMining   ;don't let mine while climbing the ladders
-
     stx TEMPY
 
-    ldx TMPNUM
-
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    tay ; store the cell offset in Y
-
-
-    ldx TMPNUM
-    lda MAP_3CELLS_INTERSECTIONS,x
-    cmp #1
-    beq mine_onlyOneSegmentUsed
-    ;Let's change the second segment
-
-    lda GAMEMAP0,y + MAPHEIGHT
-    ldx TMPNUM              ;load x coord
-    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    sta GAMEMAP0,y + MAPHEIGHT
-
-
-mine_onlyOneSegmentUsed:
-
-    lda GAMEMAP0,y
-    ldx TMPNUM
-    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    sta GAMEMAP0,y
+    jsr Mine
 
     ldy #0 ; first digit
     jsr IncrementScore
@@ -579,12 +556,44 @@ OverscanLoop:
 
     rts
 ;-----------------------------
+Mine
+    ldx TMPNUM
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay ; store the cell offset in Y
+
+
+    ldx TMPNUM
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq mine_onlyOneSegmentUsed
+    ;Let's change the second segment
+
+    lda GAMEMAP0,y + MAPHEIGHT
+    ldx TMPNUM              ;load x coord
+    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    sta GAMEMAP0,y + MAPHEIGHT
+
+
+mine_onlyOneSegmentUsed:
+
+    lda GAMEMAP0,y
+    ldx TMPNUM
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    sta GAMEMAP0,y
+
+    rts
+;-----------------------------
 CalcLavaCollision:
 
     jmp CheckLava
 ResetTheGame:
-    
-    jsr Reset
+    lda #64
+    sta GAME_OVER_TIMER
+    jmp notCollidingWithLava
+    ;jsr Reset
 CheckLava:
     lda PLAYERX
     ldx #0
@@ -1140,14 +1149,38 @@ checkLeft_seg1:
     jmp exitLeftTilesCheck
 
 
-
+;------------------------------------------------------
 
 VBlank:
 
+    jmp there
+ResetThatGame:
+    jsr Reset
+there:
     lda GENERATING
     cmp #1
     beq notReached
 
+    lda GAME_OVER_TIMER
+    beq noGameOver
+    tax
+    dex
+    lda #8
+    sta AUDC1
+    lda #64
+    sec
+    sbc GAME_OVER_TIMER
+    lsr
+    sta AUDF1
+    lda #14
+    sta AUDV1
+continueGameOver:
+    cpx #0
+    beq ResetThatGame
+    stx GAME_OVER_TIMER
+    jmp updatePlayerSpriteX
+
+noGameOver:
     lda PLAYERY
     cmp #MAX_PLAYER_Y - 10
     bcs movePlayer ;start moving lava only when player descended to a lower level
@@ -1157,19 +1190,14 @@ VBlank:
 movePlayer:
     jsr ProcessInput
 
+updatePlayerSpriteX:
     lda PLAYERX
     ldx #0
     jsr SetSpriteXPos
 
-    lda LAVAX
-    ldx #4
-    jsr SetSpriteXPos
-
     sta WSYNC
     sta HMOVE
-
-
-   
+    
     ldy SCREEN_FRAME
     iny
     cpy #2
@@ -1234,10 +1262,11 @@ notReached:
         echo "------", [$FBFA - *]d, "bytes free before End of code"
         align 256
     endif
-
+;--------------------------------------------
 ;ROM constants
-    ORG $FBF4
 
+    ORG $FBF4
+;--------------------------------------------
 DIGITS_PTR_LOW:
     .byte <(ZERO_GFX)
     .byte <(ONE_GFX)
@@ -1273,9 +1302,6 @@ DWARF_PTR_HIGH: ; high 8bits of 16bit address
     .byte >(DWARF_GFX_1)
     .byte >(DWARF_GFX_2)
     .byte >(DWARF_GFX_3)
-
-
-
 
 ;-------------------------------------------
 
