@@ -12,6 +12,8 @@ DIGITS_PTR_COUNT             = 12
 X_OFFSET_TO_RIGHT_FOR_MINING = 7
 MIN_PLAYER_Y                 = 9
 MAX_PLAYER_Y                 = 54
+MAX_PLAYER_LIVES             = 3
+
 GOALX                        = 130
 GOALY                        = 12
 LIVES_BG                     = $80
@@ -116,7 +118,7 @@ Reset:
     lda #20
     sta LAVA_SPEED
 
-    lda #2
+    lda #MAX_PLAYER_LIVES
     sta PLAYER_LIVES
 
     jsr EnterNewMap
@@ -492,26 +494,22 @@ score_line_loop:
     sta WSYNC   ;let's draw an empty line
     sta HMOVE
 
-    lda #%00000011 ;2 2
-    sta NUSIZ0     ;3 5
-    sta NUSIZ1     ;3 8
+    ldy PLAYER_LIVES ;3 2
+    lda LIVES_LOOKUP,y
+    sta NUSIZ0       ;3 5
 
     lda #LIVES_BG  ;2 10
     sta COLUBK     ;3 13
     lda #0         ;2 15
-    SLEEP 4        ;6 21
+    SLEEP 2        ;6 21
 
     sta RESP0      ;2 reset sprite pos
-    sta RESP1
 
     lda #$0        ;2
     sta HMP0       ;3  reset p1 x offset
-    lda #$11       ;2  move p2 sprite left a bit
-    sta HMP1       ;3 
 
 
     ldy #PLAYERHEIGHT
-    ldx #10 ; remaining lines
     lda #0
     sta VDELP0
     sta VDELP1
@@ -520,19 +518,23 @@ lives_bar_loop:
 
     sta WSYNC
     sta HMOVE
-    cpy #0
-    beq okok1
-    lda DWARF_GFX_0,y
-    sta GRP1
-    lda DWARF_GFX_0,y
+    lda PLAYER_LIVES
+    cmp #1
+    beq no_life
+    lda DWARF_GFX_3,y
     sta GRP0
+
+    jmp next_live_line
+no_life:
+    lda #0
+    sta GRP0
+next_live_line:
     sta HMCLR   ; let's clear HM
-
     dey
-okok1:
-    dex
     bne lives_bar_loop
-
+    sta WSYNC
+    sta HMOVE
+    sta HMCLR   ; let's clear HM
 
     rts
 ;----------------------------
@@ -1590,6 +1592,11 @@ MAP_CLEAR_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfi
     .byte %00000000 ;10
     .byte %00000000 ;11
 
+LIVES_LOOKUP
+    .byte 0 ;0 lives
+    .byte 0 ;1 life
+    .byte 0 ;2 lives
+    .byte 1 ;3 lives
 
     ORG $FCF3 ; next data page
 
