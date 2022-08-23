@@ -191,6 +191,10 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     jsr UpdateRandomNumber
     and #11                     ;  limit to 0..11 range
     tax                         ;  and transfer to X register
+    cpx TMPNUM1
+    beq ladderLoop              ;same X as previous ladder, do it again!
+
+    stx TMPNUM1
     lda LADDER_X_POSSITIONS,x
     ldy LADDER_IDX
     sta LADDER1X,y              ;  store sprite position to ram variable
