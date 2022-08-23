@@ -3,28 +3,30 @@
     include "macro.h"
 
 
-MAPHEIGHT                    = 6
-MAPWIDTH                     = 12
-PLAYERHEIGHT                 = 9
-LADDERHEIGHT                 = 11
-LINESPERCELL                 = 9
-DIGITS_PTR_COUNT             = 12
-X_OFFSET_TO_RIGHT_FOR_MINING = 7
-MIN_PLAYER_Y                 = 9
-MAX_PLAYER_Y                 = 54
-MAX_PLAYER_LIVES             = 3
+MAPHEIGHT                        = 6
+MAPWIDTH                         = 12
+PLAYERHEIGHT                     = 9
+LADDERHEIGHT                     = 11
+LINESPERCELL                     = 9
+DIGITS_PTR_COUNT                 = 12
+X_OFFSET_TO_RIGHT_FOR_MINING     = 7
+MIN_PLAYER_Y                     = 9
+MAX_PLAYER_Y                     = 54
+MAX_PLAYER_LIVES                 = 3
 
-GOALX                        = 130
-GOALY                        = 12
-LIVES_BG                     = $80
+MIN_X_DIFFERENCE_BETWEEN_LADDERS = 3
 
-PLAYERS_COLOR                = 15
-LADDERS_COLOR                = $C6
-GROUND_COLOR                 = $96
-LAVA_COLOR                   = $38
+GOALX                            = 130
+GOALY                            = 12
+
+LIVES_BG                         = $80
+PLAYERS_COLOR                    = 15
+LADDERS_COLOR                    = $C6
+GROUND_COLOR                     = $96
+LAVA_COLOR                       = $38
 
 
-NO_ILLEGAL_OPCODES = 1 ; DASM needs it
+NO_ILLEGAL_OPCODES               = 1 ; DASM needs it
 
 ;----------------------------------------------------
 ;           RAM
@@ -191,10 +193,23 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     jsr UpdateRandomNumber
     and #11                     ;  limit to 0..11 range
     tax                         ;  and transfer to X register
-    cpx TMPNUM1
-    beq ladderLoop              ;same X as previous ladder, do it again!
+    cmp TMPNUM1
+    bcs XIsBiggerOrEqual        ; this X is bigger or equal
 
+    lda TMPNUM1                 ; this X is smaller than previous
     stx TMPNUM1
+    sec
+    sbc TMPNUM1
+    jmp compareResult
+XIsBiggerOrEqual:
+    sec
+    sbc TMPNUM1
+
+compareResult:
+    stx TMPNUM1
+    cmp #MIN_X_DIFFERENCE_BETWEEN_LADDERS
+    bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
+
     lda LADDER_X_POSSITIONS,x
     ldy LADDER_IDX
     sta LADDER1X,y              ;  store sprite position to ram variable
