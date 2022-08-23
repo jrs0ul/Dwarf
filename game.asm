@@ -574,6 +574,12 @@ Overscan:
     bpl notColliding
     ;so the player is colliding with the playfield
 
+
+    ;let's check if the player collides with the lava
+    jsr CalcLavaCollision
+
+
+
     lda PLAYER_FRAME
     cmp #%00011111
     bne notMining
@@ -635,9 +641,6 @@ doneMining:
 
 notMining:           ; some kind of collision
 
-                     ;let's check if the player collides with the lava
-
-    jsr CalcLavaCollision
 
 
     lda OLDPLAYERX   ; let's restore previous player state before the collision
@@ -690,17 +693,11 @@ mine_onlyOneSegmentUsed:
 ;-----------------------------
 CalcLavaCollision:
 
-    jmp CheckLava
-ResetTheGame:
-    lda #64
-    sta GAME_OVER_TIMER
-    jmp notCollidingWithLava
-
-CheckLava:
+    ;CALC X1
     lda PLAYERX
     ldx #0
     sec
-    sbc #1
+    sbc #4
 lava_divx:
     cmp #12
     bcc lava_doneDividingX
@@ -720,6 +717,34 @@ lava_checkBoundsX:
     ldx #MAPWIDTH - 1 ; let's clamp X
 lava_storeX:
     stx TMPNUM;
+;----
+    ;CALC X2
+    lda PLAYERX
+    ldx #0
+    clc
+    adc #4
+lava_divx_2:
+    cmp #12
+    bcc lava_doneDividingX_2
+    sec
+    sbc #12
+    inx
+    jmp lava_divx_2
+lava_doneDividingX_2:
+    cmp #6
+    bcc lava_checkBoundsX_2
+    inx
+
+lava_checkBoundsX_2:
+    cpx #MAPWIDTH
+    bcc lava_storeX_2 ; the x < MAPWIDTH, let's clamp it
+
+    ldx #MAPWIDTH - 1 ; let's clamp X
+lava_storeX_2:
+    stx TMPNUM1;
+
+;----
+
 
     lda PLAYERY
     ldx #0
@@ -761,6 +786,42 @@ lava_onlyOneSegmentUsed:
     ldx TMPNUM
     and MAP_FILL_PATTERN_BY_X_SEG1,x
     bne ResetTheGame
+
+
+;repeat the same check but with X2
+    ldx TMPNUM1
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay ; store the cell offset in Y
+
+
+    ldx TMPNUM1
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq lava_onlyOneSegmentUsed_2
+    ;Let's change the second segment
+
+    lda LAVAMAP0,y + MAPHEIGHT
+    ldx TMPNUM1              ;load x coord
+    and MAP_FILL_PATTERN_BY_X_SEG2,x
+    bne ResetTheGame
+
+
+lava_onlyOneSegmentUsed_2:
+
+    lda LAVAMAP0,y
+    ldx TMPNUM1
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne ResetTheGame
+
+
+    jmp notCollidingWithLava
+
+ResetTheGame:
+    lda #64
+    sta GAME_OVER_TIMER
 
 notCollidingWithLava:
 
