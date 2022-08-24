@@ -569,10 +569,8 @@ Overscan:
     bpl notColliding
     ;so the player is colliding with the playfield
 
-
     ;let's check if the player collides with the lava
     jsr CalcLavaCollision
-
 
 
     lda PLAYER_FRAME
@@ -648,6 +646,32 @@ notMining:           ; some kind of collision
 
 
 notColliding:
+    
+    bit CXPPMM
+    bpl OverscanLoop
+
+    lda PLAYER_DIR
+    cmp #3
+    bne OverscanLoop
+
+    lda PLAYERX
+    clc
+    adc #5 ; hacky hack
+prepareDivide:
+    ldx #0
+dividing_x:
+    inx
+    sec
+    sbc #12
+    bcs dividing_x
+    dex
+    cpx #MAPWIDTH
+    bcc setLadderXToPlayer
+    ldx #MAPWIDTH - 1
+setLadderXToPlayer:
+    lda PLAYER_X_POSITIONS_BY_MAP_X,x
+    sta PLAYERX
+    sta OLDPLAYERX
 
 
 OverscanLoop:
@@ -974,6 +998,8 @@ checkDown:
     sta TMPNUM
     bcs checkButton
 moveDown:
+    lda #3
+    sta PLAYER_DIR
     lda PLAYERY
     sec
     sbc #1
@@ -1717,7 +1743,21 @@ Y_POSITIONS_WHERE_YOU_CAN_MINE:
     .byte 45
     .byte 54  ;top row
 
-    ;30 bytes used of 256
+PLAYER_X_POSITIONS_BY_MAP_X:
+    .byte 2         ;0
+    .byte 14
+    .byte 26
+    .byte 38
+    .byte 50
+    .byte 62
+    .byte 74
+    .byte 86
+    .byte 98
+    .byte 110
+    .byte 122
+    .byte 134       ;11
+
+    ;41 bytes used of 256
 
 
     ;------------------------------------------
