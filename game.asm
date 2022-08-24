@@ -130,7 +130,6 @@ Main:
     jsr Vsync
     jsr VBlank
     jsr Kernel
-    jsr HUD
     jsr Overscan
     jmp Main
 ;--------------------------
@@ -148,6 +147,7 @@ EnterNewMap:
     sta LAVA_TIMER
     sta LAVA_DIR
     sta GENERATING
+    sta TMPNUM1
     lda #5
     sta LAVAY
 
@@ -323,7 +323,7 @@ Kernel:
     sta REFP0
 
 
-    ldx #54 ; scanlines, max scanlines / 2
+    ldx #54 ; scanlines, max scanlines / 3
 
 
 KERNEL_LOOP:
@@ -360,7 +360,7 @@ nope:
 
     stx TEMP_X_INDEX        ;3 11    save scanline index
 
-    ldx TMPNUM       ;3 14
+    ldx TMPNUM              ;3 14
 
     lda GAMEMAP0,x          ;4 18
     sta PF0                 ;3 21
@@ -428,7 +428,7 @@ divLoop:
     ;---------------------------------------------
     sta HMOVE               ;3 3
     inc LADDER_IDX          ;5 8    let's position next ladder
-    dec TMPNUM       ;5 13   move to next map cell
+    dec TMPNUM              ;5 13   move to next map cell
     ldx #LINESPERCELL       ;2 15   reset line count
 cont:
     stx LINE_IDX            ;3 18 save current line count
@@ -438,17 +438,12 @@ cont:
     dex                     ;2 23
     bne KERNEL_LOOP ;       ;2 25
 doneDrawing:
-    
-    rts
-
-;-------------------------------------------------------------------------------------------------
-
-HUD:
 
     ;let's draw a score
     ;---------------------------------------------
     lda #0
     sta GRP0
+    sta GRP1
     sta WSYNC   ;let's draw an empty line
     sta HMOVE
 
@@ -468,7 +463,7 @@ HUD:
     ;lda #254           ;2  move p2 sprite right a bit
     ;sta HMP1           ;3 
 
-    ldy #PLAYERHEIGHT
+    ldy #PLAYERHEIGHT - 1
     sty TEMP_X_INDEX
     lda #1
     sta VDELP0  ;turn on vertical delay
