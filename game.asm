@@ -650,8 +650,8 @@ notColliding:
     bit CXPPMM
     bpl OverscanLoop
 
-    lda PLAYER_DIR
-    cmp #3
+    lda PLAYER_FRAME
+    cmp #%00010000
     bne OverscanLoop
 
     lda PLAYERX
@@ -998,8 +998,8 @@ checkDown:
     sta TMPNUM
     bcs checkButton
 moveDown:
-    lda #3
-    sta PLAYER_DIR
+    ;lda #3
+    ;sta PLAYER_DIR
     lda PLAYERY
     sec
     sbc #1
