@@ -612,8 +612,9 @@ divy:
     inx
     jmp divy
 doneDividing:
-    ;cmp #MIN_PLAYER_Y
-    ;bne notMining   ;don't let mine while climbing the ladders
+    lda PLAYERY
+    cmp Y_POSITIONS_WHERE_YOU_CAN_MINE,x
+    bne notMining   ;don't let mine while climbing the ladders
     stx TEMPY
 
     jsr Mine
@@ -693,6 +694,9 @@ CalcLavaCollision:
     ldx #0
     sec
     sbc #4
+    cmp PLAYERX
+    bcc lava_divx ;the result is less than PLAYERX
+    lda #0        ;since the negative value would be bigger
 lava_divx:
     cmp #12
     bcc lava_doneDividingX
@@ -1704,7 +1708,16 @@ MAP_FILL_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfie
     .byte %00000000 ;10
     .byte %00000000 ;11
 
-    ;24 bytes used of 256
+
+Y_POSITIONS_WHERE_YOU_CAN_MINE:
+    .byte 9   ;bottom row
+    .byte 18
+    .byte 27
+    .byte 36
+    .byte 45
+    .byte 54  ;top row
+
+    ;30 bytes used of 256
 
 
     ;------------------------------------------
