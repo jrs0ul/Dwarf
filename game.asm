@@ -333,7 +333,6 @@ KERNEL_LOOP:
     dey                     ;2 36
     sty LADDER_LINE_IDX     ;3 39
 
-    sta HMCLR               ;3 42
 
 drawThePlayer:
 
@@ -342,11 +341,13 @@ drawThePlayer:
     cpx PLAYERY             ;3 50   can we draw the player sprite?
     bcs nope                ;2 52   < PLAYERY
 
-    lda (PLAYERPTR),y       ;5 57    let's load a line from a sprite frame
-    sta GRP0                ;3 60    and store it to the Player0 sprite
-    dec TMPNUM1             ;5 65
+    lda PLAYERCOLORS,y      ;4 56    sets the player colors
+    sta COLUP0              ;3 59
+    lda (PLAYERPTR),y       ;5 64    let's load a line from a sprite frame
+    sta GRP0                ;3 67    and store it to the Player0 sprite
+    dec TMPNUM1             ;5 72
 nope:
-    ldy LADDER_LINE_IDX     ;3 68
+    ldy LADDER_LINE_IDX     ;3 75
 
     ;----------------------------------------------------------------
 
@@ -375,9 +376,9 @@ nope:
 
     lda GAMEMAP3,x          ;4 39
     sta PF0                 ;3 42
-
-    nop
     
+    sta HMCLR               ;3 42 ; this resets the horizontal movement for the player sprite, placed it here instead nop
+
     lda GAMEMAP4,x          ;4 46
     sta PF1                 ;3 49
     
@@ -1585,7 +1586,7 @@ DWARF_GFX_3:
     .byte %10110101
     .byte %10111101
     .byte %01110011
-    .byte %00100110
+    .byte %00100000
     .byte %00110000
 
 LADDER_GFX:
@@ -1751,7 +1752,20 @@ PLAYER_X_POSITIONS_BY_MAP_X:
     .byte 122
     .byte 134       ;11
 
-    ;41 bytes used of 256
+PLAYERCOLORS:
+    .byte $FE
+    .byte $FE
+    .byte $FE
+    .byte $FE
+    .byte $14
+    .byte $8E
+    .byte $8E
+    .byte $8E
+    .byte $4E
+    .byte $4E
+
+
+    ;51 bytes used of 256
 
 
     ;------------------------------------------
