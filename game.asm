@@ -22,7 +22,7 @@ GOALY                            = 12
 LIVES_BG                         = $80
 PLAYERS_COLOR                    = 15
 LADDERS_COLOR                    = $C6
-GROUND_COLOR                     = $96
+GROUND_COLOR                     = $93
 LAVA_COLOR                       = $38
 
 
@@ -53,7 +53,6 @@ LADDER2X         ds 1
 LADDER3X         ds 1
 LADDER4X         ds 1
 LADDER5X         ds 1
-LADDER_IDX       ds 1
 
 PLAYERY          ds 1  ; Player's Y position
 PLAYERX          ds 1  ; Player's X position
@@ -94,7 +93,7 @@ GENERATING       ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
 
 ;------------------------------------------------------
-;                  123 | 5 bytes free
+;                  122 | 6 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -115,7 +114,6 @@ Reset:
 
     lda #0
     sta SCREEN_FRAME
-    sta LADDER_IDX
 
     lda #20
     sta LAVA_SPEED
@@ -184,8 +182,6 @@ genloop:
     lda #%00000111
     sta GAMEMAP1,x
 
-    lda #0
-    sta LADDER_IDX
     lda #4                      ;inverted first y position
     sta TEMPY
     ;----------
@@ -211,7 +207,7 @@ compareResult:
     bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
 
     lda LADDER_X_POSSITIONS,x
-    ldy LADDER_IDX
+    ldy TEMPY
     sta LADDER1X,y              ;  store sprite position to ram variable
 
 
@@ -240,15 +236,10 @@ onlyOneSegmentUsed:
 
 
 nextLadder:
-    inc LADDER_IDX
-    lda #4
-    sec
-    sbc LADDER_IDX
-    sta TEMPY 
+    dec TEMPY
+    lda TEMPY
     cmp #255
     bne ladderLoop
-
-
 
 
     rts
@@ -301,7 +292,8 @@ Kernel:
 
     lda #0
     sta COLUBK      ;set X as the background color
-    sta LADDER_IDX
+    lda #4
+    sta TEMPY; index for the second ladder
     
     ldy #PLAYERHEIGHT
     sty TMPNUM1 ; store player scanline index
@@ -410,7 +402,7 @@ exitDrawLava:
     sta PF2                 ;3 3  clearing the remaining playfield register
     bne cont                ;2 5  not all lines for a cell have been drawn, continue
 
-    ldx LADDER_IDX          ;3 8
+    ldx TEMPY               ;3 8  load ladder index
     lda LADDER1X,x          ;4 12
     sec                     ;2 14
 divLoop:
@@ -428,7 +420,7 @@ divLoop:
     sta WSYNC
     ;---------------------------------------------
     sta HMOVE               ;3 3
-    inc LADDER_IDX          ;5 8    let's position next ladder
+    dec TEMPY               ;5 8    let's position next ladder, decrease ladder index
     dec TMPNUM              ;5 13   move to next map cell
     ldx #LINESPERCELL       ;2 15   reset line count
 cont:
@@ -1125,6 +1117,13 @@ LavaLogic:
 
     ldy LAVA_TIMER
     iny
+    lda #11
+    sta AUDC1
+    lda LAVA_TIMER
+    sta AUDF1
+    lda #6
+    sta AUDV1
+
     cpy LAVA_SPEED
     bcc lavaSleep
 
@@ -1150,6 +1149,10 @@ onlyONE:
     lda LAVAMAP0,y
     ora MAP_FILL_PATTERN_BY_X_SEG1,x
     sta LAVAMAP0,y
+
+       lda #0
+    sta AUDV1
+
 
 
 ;-----
