@@ -12,9 +12,10 @@ DIGITS_PTR_COUNT                 = 12
 X_OFFSET_TO_RIGHT_FOR_MINING     = 7
 MIN_PLAYER_Y                     = 9
 MAX_PLAYER_Y                     = 54
+MAX_PLAYER_X                     = 140
 MAX_PLAYER_LIVES                 = 3
 
-MIN_X_DIFFERENCE_BETWEEN_LADDERS = 3
+MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
 
 GOALX                            = 130
 GOALY                            = 12
@@ -203,7 +204,7 @@ XIsBiggerOrEqual:
 
 compareResult:
     stx TMPNUM1
-    cmp #MIN_X_DIFFERENCE_BETWEEN_LADDERS
+    cmp #MIN_X_DISTANCE_BETWEEN_LADDERS
     bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
 
     lda LADDER_X_POSSITIONS,x
@@ -754,8 +755,6 @@ lava_storeX_2:
     stx TMPNUM1;
 
 ;----
-
-
     lda PLAYERY
     ldx #0
 lava_divy:
@@ -909,7 +908,7 @@ itWasFacingRightAlready:
     lda PLAYERX
     clc
     adc #1
-    cmp #140
+    cmp #MAX_PLAYER_X
     bcs checkLeft
   
     ldx PLAYERX
@@ -985,8 +984,6 @@ checkDown:
     sta TMPNUM
     bcs checkButton
 moveDown:
-    ;lda #3
-    ;sta PLAYER_DIR
     lda PLAYERY
     sec
     sbc #1
@@ -1051,12 +1048,6 @@ UpdateRandomNumber:
 noeor:
     sta RANDOM
 
-    rts
-
-;-------------------------
-GenerateMap:
-
-    
     rts
 ;-------------------------
 SetSpriteXPos
@@ -1150,18 +1141,16 @@ onlyONE:
     ora MAP_FILL_PATTERN_BY_X_SEG1,x
     sta LAVAMAP0,y
 
-       lda #0
+    lda #0
     sta AUDV1
 
-
-
 ;-----
+    
     jmp CheckLowerGroundTile
 exitLowerTileCheck:
 ;----
 moveLavaHorizontaly:
     ldy #0
-
 
     lda LAVA_DIR
     cmp #0
@@ -1170,7 +1159,9 @@ moveLavaHorizontaly:
     bcs rightSideReached
     inx
 ;-------
-    jmp CheckGroundTilesRight
+    jsr CheckGroundTiles
+    cmp #1
+    beq rightSideReached
 exitRightTilesCheck:
 ;-------
     jmp storeLavaX
@@ -1178,7 +1169,9 @@ exitRightTilesCheck:
 moveLavaLeft:
     dex
 ;------
-    jmp CheckGroundTilesLeft
+    jsr CheckGroundTiles
+    cmp #1
+    beq leftSideReached
 exitLeftTilesCheck:
 ;------
     cpx #255 ; "-1" :)
@@ -1205,9 +1198,10 @@ lavaSleep:
     sty LAVA_TIMER
 
     rts
-;-------------------------
-;fake subroutine
-CheckGroundTilesRight:
+;--------------------------------------
+;checks if there is ground tile on X
+; A = 1 ir there is, 0 if not
+CheckGroundTiles:
 
     ; check if it's possible to move right
     lda MAP_3CELLS_LOOKUP,x
@@ -1217,53 +1211,27 @@ CheckGroundTilesRight:
     
     lda MAP_3CELLS_INTERSECTIONS,x
     cmp #1
-    beq checkRight_seg1
+    beq check_seg1
     ;Let's change the second segment
 
     lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
     eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
     and MAP_FILL_PATTERN_BY_X_SEG2,x
-    bne rightSideReached
+    bne sideReached
 
-checkRight_seg1:
+check_seg1:
     lda GAMEMAP0,y
     eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
     and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne rightSideReached
+    bne sideReached
 
     ldy #0
-
-    jmp exitRightTilesCheck
-
-
-;fake subroutine
-CheckGroundTilesLeft:
-
-    ; check if it's possible to move right
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc LAVAY
-    tay
-    
-    lda MAP_3CELLS_INTERSECTIONS,x
-    cmp #1
-    beq checkLeft_seg1
-    ;Let's change the second segment
-
-    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
-    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    and MAP_FILL_PATTERN_BY_X_SEG2,x
-    bne leftSideReached
-
-checkLeft_seg1:
-    lda GAMEMAP0,y
-    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
-    and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne leftSideReached
-
-    ldy #0
-
-    jmp exitLeftTilesCheck
+    lda #0
+    jmp exitGroundCheck
+sideReached:
+    lda #1
+exitGroundCheck:
+    rts;
 
 ;-----------------------------------------------------
 UpdateSpriteFrames:
@@ -1667,7 +1635,7 @@ MAP_3CELLS_LOOKUP: ;An offset from the start of GAMEMAP0 based on X
     .byte 30 ;10
     .byte 30 ;11
 
-MAP_CLEAR_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they contains a patter used with AND
+MAP_CLEAR_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they contains a pattern used with AND
     .byte %01111111 ;0 first part
     .byte %11000111 ;1
     .byte %11111000 ;2
@@ -1703,7 +1671,7 @@ LIVES_LOOKUP
 
     ORG $FCF3 ; next data page
 
-MAP_FILL_PATTERN_BY_X_SEG1:    ; lookup tables for map cell destruction, they contains a patter used with AND
+MAP_FILL_PATTERN_BY_X_SEG1:    ; lookup tables for filling lava in the lava map, they contains a pattern used with ORA
     .byte %10000000 ;0 first part
     .byte %00111000 ;1
     .byte %00000111 ;2
