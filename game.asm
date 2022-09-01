@@ -24,7 +24,8 @@ LIVES_BG                         = $80
 PLAYERS_COLOR                    = 15
 LADDERS_COLOR                    = $C6
 GROUND_COLOR                     = $93
-LAVA_COLOR                       = $38
+LAVA_COLOR_BEFORE                = $34
+LAVA_COLOR_AFTER                 = $14
 
 
 NO_ILLEGAL_OPCODES               = 1 ; DASM needs it
@@ -78,7 +79,9 @@ RANDOM           ds 1  ;random 8bit number
 PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME     ds 1  ;frame index
 
-GAME_OVER_TIMER  ds 1
+GAME_OVER_TIMER          ds 1
+CURRENT_LAVA_COLOR       ds 1
+
 SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
 TMPNUM           ds 1
 TMPNUM1          ds 1
@@ -94,7 +97,7 @@ GENERATING       ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
 
 ;------------------------------------------------------
-;                  122 | 6 bytes free
+;                  123 | 5 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -118,6 +121,9 @@ Reset:
 
     lda #20
     sta LAVA_SPEED
+
+    lda LAVA_COLOR_BEFORE
+    sta CURRENT_LAVA_COLOR
 
     lda #MAX_PLAYER_LIVES
     sta PLAYER_LIVES
@@ -249,7 +255,7 @@ nextLadder:
 ; Fake subroutine
 drawLava:
 
-    lda #LAVA_COLOR         ;3 9
+    lda CURRENT_LAVA_COLOR  ;3 9
     sta COLUPF              ;3 12
 
     lda LAVAMAP0,x          ;4 16
@@ -266,8 +272,6 @@ drawLava:
     lda LAVAMAP3,x          ;4 37
     sta PF0                 ;3 40
 
-    nop                     ;2 42
-    
     lda LAVAMAP4,x          ;4 46
     sta PF1                 ;3 49
     
@@ -1291,6 +1295,16 @@ there:
     cmp #1
     beq notReached
 
+    ldx CURRENT_LAVA_COLOR
+    dex
+    cpx #LAVA_COLOR_AFTER
+    beq resetLavaColor
+    jmp gameOverTimer
+resetLavaColor:
+    ldx #LAVA_COLOR_BEFORE
+gameOverTimer:
+    stx CURRENT_LAVA_COLOR
+
     lda GAME_OVER_TIMER
     beq noGameOver
     tax
@@ -1724,11 +1738,11 @@ PLAYER_X_POSITIONS_BY_MAP_X:
     .byte 134       ;11
 
 PLAYERCOLORS:
-    .byte $FE
-    .byte $FE
-    .byte $FE
-    .byte $FE
-    .byte $14
+    .byte $1A
+    .byte $1A
+    .byte $1A
+    .byte $1A
+    .byte $12
     .byte $8E
     .byte $8E
     .byte $8E
