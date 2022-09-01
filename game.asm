@@ -1294,8 +1294,12 @@ there:
     lda GENERATING
     cmp #1
     beq notReached
-
+;-- lava color animation
     ldx CURRENT_LAVA_COLOR
+    lda LAVA_TIMER
+    lsr
+    cmp #2
+    bcs gameOverTimer
     dex
     cpx #LAVA_COLOR_AFTER
     beq resetLavaColor
@@ -1304,7 +1308,7 @@ resetLavaColor:
     ldx #LAVA_COLOR_BEFORE
 gameOverTimer:
     stx CURRENT_LAVA_COLOR
-
+;--
     lda GAME_OVER_TIMER
     beq noGameOver
     tax
