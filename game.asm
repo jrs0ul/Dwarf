@@ -352,27 +352,27 @@ nope:
 
     ;----------------------------------------------------------------
 
-    lda #GROUND_COLOR
-    sta COLUPF
-    ;----------------------------------------- only here starts playfield drawing
+    lda #GROUND_COLOR       ;2 2
+    sta COLUPF              ;3 5
 
-    stx TEMP_X_INDEX        ;3 11    save scanline index
 
-    ldx TMPNUM              ;3 14
+    stx TEMP_X_INDEX        ;3 8    save scanline index
 
-    lda GAMEMAP0,x          ;4 18
-    sta PF0                 ;3 21
+    ldx TMPNUM              ;3 11
 
-    lda GAMEMAP1,x          ;4 25
-    sta PF1                 ;3 28
+    lda GAMEMAP0,x          ;4 15
+    sta PF0                 ;3 18
 
-    lda GAMEMAP2,x          ;4 32
-    sta PF2                 ;3 35
+    lda GAMEMAP1,x          ;4 22
+    sta PF1                 ;3 25
+
+    lda GAMEMAP2,x          ;4 29
+    sta PF2                 ;3 32
 
     ;------right side of the screen
 
-    lda GAMEMAP3,x          ;4 39
-    sta PF0                 ;3 42
+    lda GAMEMAP3,x          ;4 36
+    sta PF0                 ;3 39
     
     sta HMCLR               ;3 42 ; this resets the horizontal movement for the player sprite, placed it here instead nop
 
