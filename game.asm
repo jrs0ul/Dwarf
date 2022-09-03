@@ -279,7 +279,6 @@ drawLava:
     lda GAMEMAP3,x          ;4 36
     sta PF0                 ;3 39
 
-    sta HMCLR               ;3 42 ; this resets the horizontal movement for the player sprite, placed it here instead nop
 
     lda GAMEMAP4,x          ;4 46
     sta PF1                 ;3 49
@@ -288,8 +287,13 @@ drawLava:
     sta PF2                 ;3 58
 
     ;enable missile if a map row matches prize Y
-    SLEEP 5
-    lda #$FF    ;2
+
+    lda #11
+    sbc LINE_IDX ; subtract current map tile line index
+    lsr          ; A / 2
+    lsr          ; A / 2
+    ;A needs to be 2 for missile to be enabled
+cpxas:
     cpx CURRENT_PRIZE_Y   ;3
     beq enam    ;3
     lda #0      ;2
@@ -299,8 +303,9 @@ enam:
     sta WSYNC               ;finish the scanline
     ;---------------------------------------------
 
-    sta ENAM0   ;3
-    SLEEP 4
+    sta HMCLR               ;3  ; this resets the horizontal movement for the player sprite, placed it here instead nop
+    sta ENAM0               ;3
+
     lda CURRENT_LAVA_COLOR  ;3 61
     sta COLUPF              ;3 3
 
@@ -661,6 +666,14 @@ notMining:           ; some kind of collision
 
 
 notColliding:
+
+    bit CXM0P ;player vs missile(prize)
+    bvs hideDemPrize ;the 6th bit is set
+    jmp checkLadderCollision
+hideDemPrize:
+    lda #128    ;some other value than 255
+    sta CURRENT_PRIZE_Y
+checkLadderCollision:
     
     bit CXPPMM
     bpl OverscanLoop
@@ -1676,7 +1689,7 @@ DWARF_GFX_3:
     .byte %10110101
     .byte %10111101
     .byte %01110011
-    .byte %00100000
+    .byte %00100110
     .byte %00110000
 
 LADDER_GFX:
@@ -1848,11 +1861,11 @@ PLAYERCOLORS:
     .byte $1A
     .byte $1A
     .byte $12
-    .byte $8E
-    .byte $8E
-    .byte $8E
-    .byte $4E
-    .byte $4E
+    .byte 15
+    .byte 15
+    .byte 15
+    .byte 15
+    .byte 15
 
 PRIZE_X_POSSITIONS:
     .byte 3
