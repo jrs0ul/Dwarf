@@ -165,6 +165,17 @@ EnterNewMap:
     lda #1
     sta GENERATING
 
+    jsr UpdateRandomNumber
+    and #11
+    tax
+    lda PRIZE_X_POSSITIONS,x
+    sta PRIZEX
+    jsr UpdateRandomNumber
+    and #3
+    clc
+    adc #1
+    sta PRIZEY
+
     ldx #0
 genloop:
     
@@ -522,7 +533,7 @@ score_line_loop:
     lda #LIVES_BG  ;2 10
     sta COLUBK     ;3 13
     lda #0         ;2 15
-    SLEEP 2        ;6 21
+    ;SLEEP 2        ;6 21
 
     sta RESP0      ;2 reset sprite pos
 
@@ -872,8 +883,9 @@ Vsync:
 
     lda #0
     sta COLUBK ;reset the background color
-    sta NUSIZ0 ;reset sprite special params
     sta NUSIZ1
+    lda #%00110000
+    sta NUSIZ0 ;reset sprite special params
 
 
     sta WSYNC
@@ -1386,6 +1398,9 @@ updatePlayerSpriteX:
     lda PLAYERX
     ldx #0
     jsr SetSpriteXPos
+    lda PRIZEX
+    ldx #2
+    jsr SetSpriteXPos
 
     sta WSYNC
     sta HMOVE
@@ -1796,6 +1811,20 @@ PLAYERCOLORS:
     .byte $8E
     .byte $4E
     .byte $4E
+
+PRIZE_X_POSSITIONS:
+    .byte 3
+    .byte 15
+    .byte 27
+    .byte 39
+    .byte 51
+    .byte 63
+    .byte 75
+    .byte 87
+    .byte 99
+    .byte 111
+    .byte 123
+    .byte 135
 
 
     ;51 bytes used of 256
