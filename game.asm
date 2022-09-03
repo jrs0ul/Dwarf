@@ -79,25 +79,27 @@ RANDOM           ds 1  ;random 8bit number
 PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME     ds 1  ;frame index
 
-GAME_OVER_TIMER          ds 1
-CURRENT_LAVA_COLOR       ds 1
+GAME_OVER_TIMER         ds 1
+CURRENT_LAVA_COLOR      ds 1
+;PRIZEX                  ds 1
+PRIZEY                  ds 1
+SCREEN_FRAME            ds 1
 
-SCORE_DIGITS_IDX ds 6                 ;indexes of highscore digits (0..9)
-TMPNUM           ds 1
-TMPNUM1          ds 1
-TEMPY            ds 1
-TEMP_X_INDEX     ds 1  ; Temp variable used in drawing, and in input checking
+SCORE_DIGITS_IDX        ds 6                 ;indexes of highscore digits (0..9)
+TMPNUM                  ds 1
+TMPNUM1                 ds 1
+TEMPY                   ds 1
+TEMP_X_INDEX            ds 1  ; Temp variable used in drawing, and in input checking
 
-SCREEN_FRAME     ds 1
-LADDER_LINE_IDX  ds 1
-LINE_IDX         ds 1  ; line counter for a map cell
+LADDER_LINE_IDX         ds 1
+LINE_IDX                ds 1  ; line counter for a map cell
 
-SCORE_PTR        ds DIGITS_PTR_COUNT  ; pointers to digit graphics
-GENERATING       ds 1   ;Is the map being generared at the moment?
-BUTTON_PRESSED   ds 1   ;Is joystick button being pressed right now?
+SCORE_PTR               ds DIGITS_PTR_COUNT  ; pointers to digit graphics
+GENERATING              ds 1   ;Is the map being generared at the moment?
+BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
 
 ;------------------------------------------------------
-;                  123 | 5 bytes free
+;                  125 | 3 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -118,6 +120,9 @@ Reset:
 
     lda #0
     sta SCREEN_FRAME
+
+    lda #2
+    sta PRIZEY
 
     lda #20
     sta LAVA_SPEED
@@ -254,9 +259,38 @@ nextLadder:
 ;------------------------------------------
 ; Fake subroutine
 drawLava:
+    lda GAMEMAP2,x          ;4 29
+    sta PF2                 ;3 32
 
-    lda CURRENT_LAVA_COLOR  ;3 9
-    sta COLUPF              ;3 12
+    ;------right side of the screen
+
+    lda GAMEMAP3,x          ;4 36
+    sta PF0                 ;3 39
+
+    sta HMCLR               ;3 42 ; this resets the horizontal movement for the player sprite, placed it here instead nop
+
+    lda GAMEMAP4,x          ;4 46
+    sta PF1                 ;3 49
+
+    lda GAMEMAP5,x          ;4 55
+    sta PF2                 ;3 58
+
+    ;enable missile if a map row matches prize Y
+    SLEEP 5
+    lda #$FF    ;2
+    cpx PRIZEY   ;3
+    beq enam    ;3
+    lda #0      ;2
+enam:
+    
+    ;---------------------------------------------
+    sta WSYNC               ;finish the scanline
+    ;---------------------------------------------
+
+    sta ENAM0   ;3
+    SLEEP 4
+    lda CURRENT_LAVA_COLOR  ;3 61
+    sta COLUPF              ;3 3
 
     lda LAVAMAP0,x          ;4 16
     sta PF0                 ;3 19
@@ -366,33 +400,7 @@ nope:
     lda GAMEMAP1,x          ;4 22
     sta PF1                 ;3 25
 
-    lda GAMEMAP2,x          ;4 29
-    sta PF2                 ;3 32
-
-    ;------right side of the screen
-
-    lda GAMEMAP3,x          ;4 36
-    sta PF0                 ;3 39
     
-    sta HMCLR               ;3 42 ; this resets the horizontal movement for the player sprite, placed it here instead nop
-
-    lda GAMEMAP4,x          ;4 46
-    sta PF1                 ;3 49
-    
-    nop                     ;2 51
-
-    lda GAMEMAP5,x          ;4 55
-    sta PF2                 ;3 58
-    
-    ;--- some code I wanted to place in to this scanline
-
-    lda #0                  ;2 60   Lets turn off the playfield for one scanline
-    sta PF0                 ;3 68
-    sta PF1                 ;3 71
-    ;---------------------------------------------
-    sta WSYNC               ;finish the scanline, we don't want to cram sprite drawing instructions to be here
-    ;---------------------------------------------
-    sta PF2                 ;3 3  clearing the remaining playfield register
 
     jmp drawLava            ;3 6; faking subroutine
     ;----------------------------
@@ -435,6 +443,7 @@ cont:
     ;---------------------------------------------
     dex                     ;2 23
     bne KERNEL_LOOP ;       ;2 25
+    ;==================================================
 doneDrawing:
 
     ;let's draw a score
