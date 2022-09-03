@@ -83,6 +83,7 @@ GAME_OVER_TIMER         ds 1
 CURRENT_LAVA_COLOR      ds 1
 PRIZEX                  ds 1
 PRIZEY                  ds 1
+CURRENT_PRIZE_Y         ds 1
 SCREEN_FRAME            ds 1
 
 SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits (0..9)
@@ -120,9 +121,6 @@ Reset:
 
     lda #0
     sta SCREEN_FRAME
-
-    lda #2
-    sta PRIZEY
 
     lda #20
     sta LAVA_SPEED
@@ -175,6 +173,9 @@ EnterNewMap:
     clc
     adc #1
     sta PRIZEY
+    lda #255
+    sta CURRENT_PRIZE_Y
+
 
     ldx #0
 genloop:
@@ -289,7 +290,7 @@ drawLava:
     ;enable missile if a map row matches prize Y
     SLEEP 5
     lda #$FF    ;2
-    cpx PRIZEY   ;3
+    cpx CURRENT_PRIZE_Y   ;3
     beq enam    ;3
     lda #0      ;2
 enam:
@@ -1330,7 +1331,45 @@ digitsUpdate:
     bne digitsUpdate
 
     rts
+;----------------------------------------
+UpdatePrize:
 
+    lda CURRENT_PRIZE_Y
+    cmp #255
+    bne dontUpdatePrize
+
+    ldy PRIZEY
+
+    lda Y_POSITIONS_WHERE_YOU_CAN_MINE,y
+    cmp PLAYERY
+    bne hidePrize
+
+    lda PRIZEX
+    sec
+    sbc #18
+    
+    bmi negativeX
+    jmp comparePlayerX
+negativeX:
+    lda #0
+comparePlayerX:
+    cmp PLAYERX
+    bcs hidePrize
+    lda PRIZEX
+    clc
+    adc #18
+    cmp PLAYERX
+    bcc hidePrize
+    lda PRIZEY
+    jmp contUpdateX
+hidePrize:
+    lda #255
+
+contUpdateX:
+    sta CURRENT_PRIZE_Y
+dontUpdatePrize:
+
+    rts
 ;------------------------------------------------------
 
 VBlank:
@@ -1395,6 +1434,9 @@ movePlayer:
     jsr ProcessInput
 
 updatePlayerSpriteX:
+
+    jsr UpdatePrize
+
     lda PLAYERX
     ldx #0
     jsr SetSpriteXPos
