@@ -81,11 +81,11 @@ PLAYER_FRAME     ds 1  ;frame index
 
 GAME_OVER_TIMER         ds 1
 CURRENT_LAVA_COLOR      ds 1
-;PRIZEX                  ds 1
+PRIZEX                  ds 1
 PRIZEY                  ds 1
 SCREEN_FRAME            ds 1
 
-SCORE_DIGITS_IDX        ds 6                 ;indexes of highscore digits (0..9)
+SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits (0..9)
 TMPNUM                  ds 1
 TMPNUM1                 ds 1
 TEMPY                   ds 1
@@ -99,7 +99,7 @@ GENERATING              ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
 
 ;------------------------------------------------------
-;                  125 | 3 bytes free
+;                  122 | 6 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -618,7 +618,9 @@ doneDividing:
 
     jsr Mine
 
-    ldy #0 ; first digit
+    lda #1
+    ldx #0
+    ldy #0
     jsr IncrementScore
 
 doneMining:
@@ -879,22 +881,22 @@ Vsync:
     rts
 
 ;----------------------------
-;set Y as number of the digit
 IncrementScore:
-
-    ldx SCORE_DIGITS_IDX,y
-    inx
-    cpx #10
-    bne storeDigit
-    ldx #0
-    iny
+    clc
+    sed
+    sta TMPNUM 
+    lda SCORE_DIGITS_IDX
+    adc TMPNUM
+    sta SCORE_DIGITS_IDX
     stx TMPNUM
-    jsr IncrementScore
-    ldx TMPNUM
-    dey
-storeDigit:
-    stx SCORE_DIGITS_IDX,y
-
+    lda SCORE_DIGITS_IDX+1
+    adc TMPNUM
+    sta SCORE_DIGITS_IDX+1
+    sty TMPNUM
+    lda SCORE_DIGITS_IDX+2
+    adc TMPNUM
+    ;sta SCORE_DIGITS_IDX+2
+    cld
     rts
 
 ;---------------------------
@@ -1270,15 +1272,48 @@ digitsUpdate:
     sty TMPNUM ;store Y
     tya        ; Y -> A
     lsr        ; A / 2
+    lsr        ; A / 2
     tay        ; A -> Y
-    ldx SCORE_DIGITS_IDX,y
+    lda SCORE_DIGITS_IDX,y
+    and #$F
+    ;asl
+    ;asl
+    ;asl
+    tax
+
     ldy TMPNUM ;restore Y
     lda DIGITS_PTR_LOW,x
     sta SCORE_PTR,y
     iny
     lda DIGITS_PTR_HIGH,x
     sta SCORE_PTR,y
+
+    ldy TMPNUM ;restore Y
+    tya        ; Y -> A
+    lsr        ; A / 2
+    lsr        ; A / 2
+    tay        ; A -> Y
+
+    lda SCORE_DIGITS_IDX,y
+    and #$F0
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+
+    ldy TMPNUM ; restore index
+
     iny
+    iny
+    lda DIGITS_PTR_LOW,x
+    sta SCORE_PTR,y
+    iny
+    lda DIGITS_PTR_HIGH,x
+    sta SCORE_PTR,y
+
+    iny
+
     cpy #DIGITS_PTR_COUNT
     bne digitsUpdate
 
