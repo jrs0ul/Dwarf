@@ -64,6 +64,7 @@ LAVAY            ds 1
 LAVA_TIMER       ds 1  ;Hazzard's delay
 LAVA_DIR         ds 1  ;Hazzard's direction
 LAVA_SPEED       ds 1
+LAVA_SLEEP       ds 1  ;Makes lava inactive
 
 OLDPLAYERY       ds 1   ;Fallback data when player colides with a wall
 OLDPLAYERX       ds 1
@@ -72,7 +73,6 @@ OLDPLAYER_FRAME  ds 1
 PLAYER_DIR       ds 1  ; Player's direction
 PLAYER_FLIP      ds 1
 PLAYER_LIVES     ds 1
-
 
 RANDOM           ds 1  ;random 8bit number
 
@@ -86,7 +86,9 @@ PRIZEY                  ds 1
 CURRENT_PRIZE_Y         ds 1
 SCREEN_FRAME            ds 1
 
-SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits (0..9)
+;GAME_STATE              ds 1
+
+SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits, 4 bits - one digit
 TMPNUM                  ds 1
 TMPNUM1                 ds 1
 TEMPY                   ds 1
@@ -100,7 +102,7 @@ GENERATING              ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
 
 ;------------------------------------------------------
-;                  122 | 6 bytes free
+;                  123 | 5 bytes free
 ;------------------------------------------------------
     ;           ROM
     SEG
@@ -154,6 +156,10 @@ EnterNewMap:
     sta LAVAX
     sta LAVA_TIMER
     sta LAVA_DIR
+
+    lda #15
+    sta LAVA_SLEEP
+
     sta GENERATING
     sta TMPNUM1
     lda #5
@@ -667,12 +673,15 @@ notMining:           ; some kind of collision
 
 notColliding:
 
-    bit CXM0P ;player vs missile(prize)
-    bvs hideDemPrize ;the 6th bit is set
+    bit CXM0P               ;player vs missile(prize)
+    bvs hideDemPrize        ;the 6th bit is set
     jmp checkLadderCollision
 hideDemPrize:
-    lda #128    ;some other value than 255
+    lda #128                ;some other value than 255
+    lda #10
+    sta LAVA_SLEEP          ;freeze lava
     sta CURRENT_PRIZE_Y
+
 checkLadderCollision:
     
     bit CXPPMM
@@ -1110,11 +1119,8 @@ DivideLoop
 
     rts
 ;------------------------
-;fake subroutine
 CheckLowerGroundTile:
 
-    lda LAVAY
-    beq moveLavaHorizontaly ; lava is at 0 row
 
     ; check if there's a hole below
     lda MAP_3CELLS_LOOKUP,x
@@ -1132,16 +1138,23 @@ CheckLowerGroundTile:
     lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
     eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
     and MAP_FILL_PATTERN_BY_X_SEG2,x
-    beq lowerLava
+    beq mustLowerLava
 
 checkBelow_seg1:
     lda GAMEMAP0,y
     eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
     and MAP_FILL_PATTERN_BY_X_SEG1,x
-    beq lowerLava
+    beq mustLowerLava
 
+    lda #0
+    jmp finishLowerGroundTileCheck
 
-    jmp exitLowerTileCheck
+mustLowerLava:
+    lda #1
+
+finishLowerGroundTileCheck:
+
+    rts
 
 
 ;-------------------------
@@ -1156,9 +1169,21 @@ LavaLogic:
     lda #6
     sta AUDV1
 
-    cpy LAVA_SPEED
-    bcc lavaSleep
+    cpy LAVA_SPEED ;if LAVA_TIMER reaches the value of LAVA_SPEED, lava starts to move
+    bcc lavaDelay
 
+    ldx LAVA_SLEEP
+    cpx #0
+    bne lavaSlumber
+    jmp moveTheLava
+lavaSlumber:
+    dex
+    stx LAVA_SLEEP
+    ldy #0
+    jmp lavaDelay
+
+
+moveTheLava:
     ldx LAVAX
 
     ;-----
@@ -1186,9 +1211,11 @@ onlyONE:
     sta AUDV1
 
 ;-----
-    
-    jmp CheckLowerGroundTile
-exitLowerTileCheck:
+    lda LAVAY
+    beq moveLavaHorizontaly ; lava is at 0 row
+    jsr CheckLowerGroundTile
+    cmp #1
+    beq lowerLava
 ;----
 moveLavaHorizontaly:
     ldy #0
@@ -1203,7 +1230,6 @@ moveLavaHorizontaly:
     jsr CheckGroundTiles
     cmp #1
     beq rightSideReached
-exitRightTilesCheck:
 ;-------
     jmp storeLavaX
 
@@ -1213,7 +1239,6 @@ moveLavaLeft:
     jsr CheckGroundTiles
     cmp #1
     beq leftSideReached
-exitLeftTilesCheck:
 ;------
     cpx #255 ; "-1" :)
     beq leftSideReached
@@ -1221,21 +1246,21 @@ exitLeftTilesCheck:
 storeLavaX:
     stx LAVAX
 
-    jmp lavaSleep
+    jmp lavaDelay
 leftSideReached:
     dec LAVA_DIR
-    jmp lavaSleep
+    jmp lavaDelay
 rightSideReached:
     ldy #0
     inc LAVA_DIR
-    jmp lavaSleep
+    jmp lavaDelay
 lowerLava:
     ldy #0 ;reset timer
     lda LAVAY
-    beq lavaSleep ; don't let the lava to overflow
+    beq lavaDelay ; don't let the lava to overflow
     dec LAVAY
 
-lavaSleep:
+lavaDelay:
     sty LAVA_TIMER
 
     rts
@@ -1345,6 +1370,7 @@ digitsUpdate:
 
     rts
 ;----------------------------------------
+;Make the prize appear or disappear depending on the player character's position
 UpdatePrize:
 
     lda CURRENT_PRIZE_Y
@@ -1437,10 +1463,6 @@ continueGameOver:
     jmp updatePlayerSpriteX
 
 noGameOver:
-    lda PLAYERY
-    cmp #MAX_PLAYER_Y - 10
-    bcs movePlayer ;start moving lava only when player descended to a lower level
-
     jsr LavaLogic
 
 movePlayer:
