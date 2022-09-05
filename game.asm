@@ -15,8 +15,9 @@ MAX_PLAYER_Y                     = 54
 MAX_PLAYER_X                     = 140
 MAX_PLAYER_LIVES                 = 3
 
-LAVA_START_Y                     = 5
+LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 15
+MAX_LAVA_X                       = 11
 
 MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
 
@@ -65,8 +66,7 @@ LADDER5X                ds 1
 PLAYERY                 ds 1  ; Player's Y position
 PLAYERX                 ds 1  ; Player's X position
 
-LAVAX                   ds 1
-LAVAY                   ds 1
+LAVA_POS                ds 1  ;4 bits X, 4 bits Y
 LAVA_TIMER              ds 1  ;Hazzard's delay
 LAVA_DIR                ds 1  ;Hazzard's direction
 LAVA_SPEED              ds 1
@@ -92,7 +92,7 @@ PRIZEY                  ds 1
 CURRENT_PRIZE_Y         ds 1
 SCREEN_FRAME            ds 1
 
-;GAME_STATE              ds 1
+GAME_STATE              ds 1
 
 SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits, 4 bits - one digit
 TMPNUM                  ds 1
@@ -159,7 +159,6 @@ EnterNewMap:
     sta OLDPLAYERX
 
     lda #0
-    sta LAVAX
     sta LAVA_TIMER
     sta LAVA_DIR
 
@@ -169,8 +168,8 @@ EnterNewMap:
     sta GENERATING
     sta TMPNUM1
 
-    lda #LAVA_START_Y
-    sta LAVAY
+    lda #LAVA_START_POS
+    sta LAVA_POS
 
 
     lda #1
@@ -1141,13 +1140,14 @@ DivideLoop
 
     rts
 ;------------------------
+;assumes that lava Y is in TMPNUM
 CheckLowerGroundTile:
 
 
     ; check if there's a hole below
     lda MAP_3CELLS_LOOKUP,x
     clc
-    adc LAVAY
+    adc TMPNUM
     sec
     sbc #1
     tay
@@ -1177,7 +1177,47 @@ mustLowerLava:
 finishLowerGroundTileCheck:
 
     rts
+;-------------------------
+FillInLavaTile:
+    lda LAVA_POS
+    and #$F0
+    lsr
+    lsr
+    lsr
+    lsr
+    tax ;load lava x to x
 
+    ;-----
+    ;get the lava Y
+    lda LAVA_POS
+    and #$0F
+    sta TMPNUM  ;store it in TMPNUM
+
+    lda MAP_3CELLS_LOOKUP,x
+
+    clc
+    adc TMPNUM
+
+    tay ; store the cell offset in Y
+
+    lda MAP_3CELLS_INTERSECTIONS,x
+    cmp #1
+    beq onlyONE
+    ;Let's change the second segment
+
+    lda LAVAMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
+    ora MAP_FILL_PATTERN_BY_X_SEG2,x
+    sta LAVAMAP0,y + MAPHEIGHT
+
+onlyONE:
+    lda LAVAMAP0,y
+    ora MAP_FILL_PATTERN_BY_X_SEG1,x
+    sta LAVAMAP0,y
+
+    lda #0
+    sta AUDV1
+
+    rts
 
 ;-------------------------
 LavaLogic:
@@ -1206,34 +1246,15 @@ lavaSlumber:
 
 
 moveTheLava:
-    ldx LAVAX
 
-    ;-----
-    
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc LAVAY
-    tay ; store the cell offset in Y
+    jsr FillInLavaTile
+;----
+    ;get the lava Y
+    lda LAVA_POS
+    and #$0F
+    sta TMPNUM  ;store it in TMPNUM
 
-    lda MAP_3CELLS_INTERSECTIONS,x
-    cmp #1
-    beq onlyONE
-    ;Let's change the second segment
-
-    lda LAVAMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
-    ora MAP_FILL_PATTERN_BY_X_SEG2,x
-    sta LAVAMAP0,y + MAPHEIGHT
-
-onlyONE:
-    lda LAVAMAP0,y
-    ora MAP_FILL_PATTERN_BY_X_SEG1,x
-    sta LAVAMAP0,y
-
-    lda #0
-    sta AUDV1
-
-;-----
-    lda LAVAY
+    cmp #0
     beq moveLavaHorizontaly ; lava is at 0 row
     jsr CheckLowerGroundTile
     cmp #1
@@ -1245,7 +1266,7 @@ moveLavaHorizontaly:
     lda LAVA_DIR
     cmp #0
     bne moveLavaLeft
-    cpx #11
+    cpx #MAX_LAVA_X
     bcs rightSideReached
     inx
 ;-------
@@ -1266,7 +1287,18 @@ moveLavaLeft:
     beq leftSideReached
 
 storeLavaX:
-    stx LAVAX
+    txa
+    asl
+    asl
+    asl
+    asl
+    sta TMPNUM
+    lda LAVA_POS
+    and #$0F
+    ora TMPNUM
+
+    sta LAVA_POS
+    ;done storing x
 
     jmp lavaDelay
 leftSideReached:
@@ -1276,25 +1308,42 @@ rightSideReached:
     ldy #0
     inc LAVA_DIR
     jmp lavaDelay
-lowerLava:
-    ldy #0 ;reset timer
-    lda LAVAY
-    beq lavaDelay ; don't let the lava to overflow
-    dec LAVAY
 
+lowerLava:
+    jsr lavaMovesDown
 lavaDelay:
     sty LAVA_TIMER
 
     rts
 ;--------------------------------------
+lavaMovesDown:
+
+    ldy #0 ;reset timer
+    lda LAVA_POS
+    and #$0F
+    cmp #0
+    beq exitLavaMoveDown ; don't let the lava to overflow
+    sec
+    sbc #1
+    sta TMPNUM
+    lda LAVA_POS
+    and #$F0
+    ora TMPNUM
+    sta LAVA_POS
+
+exitLavaMoveDown:
+    rts
+
+;--------------------------------------
 ;checks if there is ground tile on X
 ; A = 1 ir there is, 0 if not
+;lets assume lava y is in TMPNUM
 CheckGroundTiles:
 
     ; check if it's possible to move right
     lda MAP_3CELLS_LOOKUP,x
     clc
-    adc LAVAY
+    adc TMPNUM; add lava y
     tay
     
     lda MAP_3CELLS_INTERSECTIONS,x
