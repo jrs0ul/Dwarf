@@ -27,6 +27,8 @@ GROUND_COLOR                     = $93
 LAVA_COLOR_BEFORE                = $34
 LAVA_COLOR_AFTER                 = $14
 
+SCORE_FOR_PRIZE                  = 10
+
 
 NO_ILLEGAL_OPCODES               = 1 ; DASM needs it
 
@@ -172,7 +174,8 @@ EnterNewMap:
     jsr UpdateRandomNumber
     and #11
     tax
-    lda PRIZE_X_POSSITIONS,x
+    stx TEMP_X_INDEX ; saves the X of prize
+    lda PRIZE_X_POSSITIONS,x ; gets an appropriate position for the missile based on X
     sta PRIZEX
     jsr UpdateRandomNumber
     and #3
@@ -235,6 +238,16 @@ compareResult:
     stx TMPNUM1
     cmp #MIN_X_DISTANCE_BETWEEN_LADDERS
     bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
+
+    cpx TEMP_X_INDEX            ;compare ladder x with prize x
+    beq checkIfLadderYIsTheSame
+    jmp saveLadderPostionToRam
+checkIfLadderYIsTheSame:
+    lda PRIZEY
+    cmp TEMPY
+    beq ladderLoop              ;generate ladder one more time
+
+saveLadderPostionToRam:
 
     lda LADDER_X_POSSITIONS,x
     ldy TEMPY
@@ -681,6 +694,10 @@ hideDemPrize:
     lda #10
     sta LAVA_SLEEP          ;freeze lava
     sta CURRENT_PRIZE_Y
+    lda #SCORE_FOR_PRIZE
+    ldy #0
+    ldx #0
+    jsr IncrementScore
 
 checkLadderCollision:
     
