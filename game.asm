@@ -127,8 +127,14 @@ Reset:
     sta CTRLPF
 
 
+
     lda #0
     sta SCREEN_FRAME
+    sta COLUBK  ;black background everywhere
+
+    ;lda #1
+    sta GAME_STATE
+
 
     lda #20
     sta LAVA_SPEED
@@ -290,6 +296,77 @@ nextLadder:
 
 
     rts
+;--------------------------------------------------
+TitleScreen:
+
+    sta WSYNC
+
+    ;lda #31
+    ;sta TMPNUM
+    ;ldy #5
+    ;lda #55             ;3 9
+    ;sta COLUPF             ;3 12
+;titleLoop:
+    
+;    sta WSYNC               ;finish the scanline
+    ;---------------------------------------------
+
+;    lda TITLE0,y          ;4 16
+;    sta PF0                 ;3 19
+
+;    lda TITLE1,y          ;4 23
+;    sta PF1                 ;3 26
+
+;    lda TITLE2,y          ;4 30
+;    sta PF2                 ;3 33
+
+    ;------right side of the screen
+
+;    lda TITLE3,y          ;4 37
+;    sta PF0                 ;3 40
+
+;    nop
+;    nop
+
+;    lda TITLE4,y          ;4 44
+;    sta PF1                 ;3 47
+    
+;    nop                     ;2 49
+
+;    lda TITLE5,y          ;4 53
+;    sta PF2                 ;3 56
+
+    
+
+;    ldx TMPNUM
+;    dex
+;    stx TMPNUM
+;    beq decreaseIdx
+;    jmp titleLoop
+;decreaseIdx:
+;    lda #31
+;    sta TMPNUM
+;    dey
+
+;    bpl titleLoop
+
+;    lda #0                  ;2 58   Lets turn off the playfield for one scanline
+;    sta PF0                 ;3 61
+;    sta PF1                 ;3 64
+;    sta PF2
+
+;    sta WSYNC
+
+    sta WSYNC
+    ldx #188
+    ldy #0
+titloop:
+    stx COLUBK
+    sta WSYNC
+    dex
+    bne titloop
+
+    rts
 
 ;------------------------------------------
 ; Fake subroutine
@@ -375,6 +452,7 @@ enableMissile:
 
     jmp exitDrawPlayfield   ;3 67
 
+
 ;--------------------------------------------------
 Kernel:
     sta WSYNC
@@ -382,33 +460,44 @@ Kernel:
     bne Kernel ; wait for vsync timer
 
     sta VBLANK
-
-    lda #0
-    sta COLUBK      ;set X as the background color
-    lda #4
-    sta TEMPY; index for the second ladder
+;------------
+    lda GAME_STATE
+    cmp #0
+    beq drawTitle
+    jmp drawGame
+drawTitle:
+    jsr TitleScreen
     
-    ldy #PLAYERHEIGHT
-    sty TMPNUM1 ; store player scanline index
+    jmp endofKernel
 
-    lda #MAPHEIGHT-1
-    sta TMPNUM ; bottom of the screenmap
+drawGame:
+;--------------
+    sta WSYNC
+;--------------
+    lda #4              ;2 2
+    sta TEMPY           ;3 5  index for the second ladder
+    
+    ldy #PLAYERHEIGHT   ;2 7
+    sty TMPNUM1         ;3 10  store player scanline index
 
-    lda #LINESPERCELL
-    sta LINE_IDX
+    lda #MAPHEIGHT-1    ;2 12
+    sta TMPNUM          ;3 15  bottom of the screenmap
 
-    ldy #LADDERHEIGHT
-    sty LADDER_LINE_IDX
+    lda #LINESPERCELL   ;2 17
+    sta LINE_IDX        ;3 20
 
-
-    lda #GROUND_COLOR
-    sta COLUPF
-
-    lda PLAYER_FLIP
-    sta REFP0
+    ldy #LADDERHEIGHT   ;2 22
+    sty LADDER_LINE_IDX ;3 25
 
 
-    ldx #54 ; scanlines, max scanlines / 3
+    lda #GROUND_COLOR   ;2 27
+    sta COLUPF          ;3 30
+
+    lda PLAYER_FLIP     ;3 33
+    sta REFP0           ;3 36
+
+
+    ldx #54             ;2 38 scanlines, max scanlines / 3
 
 
 KERNEL_LOOP:
@@ -590,9 +679,11 @@ next_live_line:
     sta HMCLR   ; let's clear HM
     dey
     bne lives_bar_loop
+endofKernel:
 
     rts
-;----------------------------
+;---------------------------------------------------------------
+
 Overscan:
     sta WSYNC
     lda #2
@@ -1481,9 +1572,44 @@ dontUpdatePrize:
 
     rts
 ;------------------------------------------------------
+TitleLogic
+
+    bit INPT4   ;checking button press;
+    bmi titleButtonNotPressed ;jump if the button wasn't pressed
+    ;----
+
+    lda BUTTON_PRESSED
+    cmp #1
+    beq titleNoInput
+    lda #1
+    sta BUTTON_PRESSED
+    
+    lda #1
+    sta GAME_STATE
+
+    jmp titleNoInput
+
+titleButtonNotPressed:
+    lda #0
+    sta BUTTON_PRESSED
+
+titleNoInput:
+
+    rts
+
+;------------------------------------------------------
 
 VBlank:
 
+    lda GAME_STATE
+    cmp #0
+    beq runTitleLogic
+    jmp GameLogic
+runTitleLogic:
+    jsr TitleLogic
+    jmp exitVBlank
+
+GameLogic:
     jmp there
 ResetThatGame:
     ldx #0
@@ -1577,6 +1703,8 @@ notReached:
 
     lda #0
     sta GENERATING
+
+exitVBlank:
 
     rts
 ;--------------------------------------------
@@ -1974,8 +2102,51 @@ PRIZE_X_POSSITIONS:
     .byte 123
     .byte 135
 
+TITLE0
+    .byte %10000000
+    .byte %10000000
+    .byte %10000000
+    .byte %10000000
+    .byte %10000000
+    .byte %10000000
+TITLE1
+    .byte %11100010
+    .byte %00010101
+    .byte %00010100
+    .byte %00010100
+    .byte %00010100
+    .byte %11101000
+TITLE2
+    .byte %10010010
+    .byte %11110101
+    .byte %10010100
+    .byte %10010100
+    .byte %10010100
+    .byte %01101000
+TITLE3
+    .byte %00100000
+    .byte %00100000
+    .byte %11100000
+    .byte %00100000
+    .byte %00100000
+    .byte %11100000
+TITLE4
+    .byte %01010000
+    .byte %01010000
+    .byte %10011110
+    .byte %01010000
+    .byte %01010000
+    .byte %10011110
+TITLE5
+    .byte %11110000
+    .byte %11110000
+    .byte %11110000
+    .byte %11110000
+    .byte %11110000
+    .byte %11110000
 
-    ;51 bytes used of 256
+
+    ;87 bytes used of 256
 
 
     ;------------------------------------------
