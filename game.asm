@@ -15,6 +15,9 @@ MAX_PLAYER_Y                     = 54
 MAX_PLAYER_X                     = 140
 MAX_PLAYER_LIVES                 = 3
 
+LAVA_START_Y                     = 5
+INITIAL_LAVA_SLEEP               = 15
+
 MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
 
 GOALX                            = 130
@@ -28,6 +31,7 @@ LAVA_COLOR_BEFORE                = $34
 LAVA_COLOR_AFTER                 = $14
 
 SCORE_FOR_PRIZE                  = 10
+MIN_DISTANCE_FROM_PRIZE          = 18
 
 
 NO_ILLEGAL_OPCODES               = 1 ; DASM needs it
@@ -38,48 +42,48 @@ NO_ILLEGAL_OPCODES               = 1 ; DASM needs it
     SEG.U VARS
     ORG $80
 
-GAMEMAP0         ds MAPHEIGHT  ;6 columns of the GameMap, 
-GAMEMAP1         ds MAPHEIGHT  ;single cells are represented as bits
-GAMEMAP2         ds MAPHEIGHT
-GAMEMAP3         ds MAPHEIGHT
-GAMEMAP4         ds MAPHEIGHT
-GAMEMAP5         ds MAPHEIGHT
+GAMEMAP0                ds MAPHEIGHT  ;6 columns of the GameMap, 
+GAMEMAP1                ds MAPHEIGHT  ;single cells are represented as bits
+GAMEMAP2                ds MAPHEIGHT
+GAMEMAP3                ds MAPHEIGHT
+GAMEMAP4                ds MAPHEIGHT
+GAMEMAP5                ds MAPHEIGHT
 
-LAVAMAP0         ds MAPHEIGHT
-LAVAMAP1         ds MAPHEIGHT
-LAVAMAP2         ds MAPHEIGHT
-LAVAMAP3         ds MAPHEIGHT
-LAVAMAP4         ds MAPHEIGHT
-LAVAMAP5         ds MAPHEIGHT
+LAVAMAP0                ds MAPHEIGHT
+LAVAMAP1                ds MAPHEIGHT
+LAVAMAP2                ds MAPHEIGHT
+LAVAMAP3                ds MAPHEIGHT
+LAVAMAP4                ds MAPHEIGHT
+LAVAMAP5                ds MAPHEIGHT
 
-LADDER1X         ds 1 ;Ladder X positions
-LADDER2X         ds 1
-LADDER3X         ds 1
-LADDER4X         ds 1
-LADDER5X         ds 1
+LADDER1X                ds 1 ;Ladder X positions
+LADDER2X                ds 1
+LADDER3X                ds 1
+LADDER4X                ds 1
+LADDER5X                ds 1
 
-PLAYERY          ds 1  ; Player's Y position
-PLAYERX          ds 1  ; Player's X position
+PLAYERY                 ds 1  ; Player's Y position
+PLAYERX                 ds 1  ; Player's X position
 
-LAVAX            ds 1
-LAVAY            ds 1
-LAVA_TIMER       ds 1  ;Hazzard's delay
-LAVA_DIR         ds 1  ;Hazzard's direction
-LAVA_SPEED       ds 1
-LAVA_SLEEP       ds 1  ;Makes lava inactive
+LAVAX                   ds 1
+LAVAY                   ds 1
+LAVA_TIMER              ds 1  ;Hazzard's delay
+LAVA_DIR                ds 1  ;Hazzard's direction
+LAVA_SPEED              ds 1
+LAVA_SLEEP              ds 1  ;Makes lava inactive
 
-OLDPLAYERY       ds 1   ;Fallback data when player colides with a wall
-OLDPLAYERX       ds 1
-OLDPLAYER_FRAME  ds 1
+OLDPLAYERY              ds 1   ;Fallback data when player colides with a wall
+OLDPLAYERX              ds 1
+OLDPLAYER_FRAME         ds 1
 
-PLAYER_DIR       ds 1  ; Player's direction
-PLAYER_FLIP      ds 1
-PLAYER_LIVES     ds 1
+PLAYER_DIR              ds 1  ; Player's direction
+PLAYER_FLIP             ds 1
+PLAYER_LIVES            ds 1
 
-RANDOM           ds 1  ;random 8bit number
+RANDOM                  ds 1  ;random 8bit number
 
-PLAYERPTR        ds 2  ;16bit address of the active sprites's frame graphics
-PLAYER_FRAME     ds 1  ;frame index
+PLAYERPTR               ds 2  ;16bit address of the active sprites's frame graphics
+PLAYER_FRAME            ds 1  ;frame index
 
 GAME_OVER_TIMER         ds 1
 CURRENT_LAVA_COLOR      ds 1
@@ -159,12 +163,13 @@ EnterNewMap:
     sta LAVA_TIMER
     sta LAVA_DIR
 
-    lda #15
+    lda #INITIAL_LAVA_SLEEP
     sta LAVA_SLEEP
 
     sta GENERATING
     sta TMPNUM1
-    lda #5
+
+    lda #LAVA_START_Y
     sta LAVAY
 
 
@@ -289,7 +294,20 @@ nextLadder:
 
 ;------------------------------------------
 ; Fake subroutine
-drawLava:
+drawPlayfield:
+
+    sta COLUPF              ;3 5
+
+    stx TEMP_X_INDEX        ;3 8    save scanline index
+    ldx TMPNUM              ;3 11
+
+    lda GAMEMAP0,x          ;4 15
+    sta PF0                 ;3 18
+
+    lda GAMEMAP1,x          ;4 22
+    sta PF1                 ;3 25
+
+
     lda GAMEMAP2,x          ;4 29
     sta PF2                 ;3 32
 
@@ -307,26 +325,28 @@ drawLava:
 
     ;enable missile if a map row matches prize Y
 
-    lda #11
+    lda #LADDERHEIGHT
     sbc LINE_IDX ; subtract current map tile line index
     lsr          ; A / 2
     lsr          ; A / 2
+
     ;A needs to be 2 for missile to be enabled
-cpxas:
-    cpx CURRENT_PRIZE_Y   ;3
-    beq enam    ;3
-    lda #0      ;2
-enam:
+    
+    cpx CURRENT_PRIZE_Y  ;3
+    beq enableMissile    ;3
+    lda #0               ;2
+
+enableMissile:
     
     ;---------------------------------------------
     sta WSYNC               ;finish the scanline
     ;---------------------------------------------
 
-    sta HMCLR               ;3  ; this resets the horizontal movement for the player sprite, placed it here instead nop
-    sta ENAM0               ;3
+    sta HMCLR               ;3 3  ; this resets the horizontal movement for the player sprite, placed it here instead nop
+    sta ENAM0               ;3 6  ; enables or disables missile depending on A
 
-    lda CURRENT_LAVA_COLOR  ;3 61
-    sta COLUPF              ;3 3
+    lda CURRENT_LAVA_COLOR  ;3 9
+    sta COLUPF              ;3 12
 
     lda LAVAMAP0,x          ;4 16
     sta PF0                 ;3 19
@@ -342,22 +362,21 @@ enam:
     lda LAVAMAP3,x          ;4 37
     sta PF0                 ;3 40
 
-    lda LAVAMAP4,x          ;4 46
-    sta PF1                 ;3 49
+    lda LAVAMAP4,x          ;4 44
+    sta PF1                 ;3 47
     
-    nop                     ;2 51
+    nop                     ;2 49
 
-    lda LAVAMAP5,x          ;4 55
-    sta PF2                 ;3 58
+    lda LAVAMAP5,x          ;4 53
+    sta PF2                 ;3 56
 
-    lda #0                  ;2 60   Lets turn off the playfield for one scanline
-    sta PF0                 ;3 63
-    sta PF1                 ;3 66
+    lda #0                  ;2 58   Lets turn off the playfield for one scanline
+    sta PF0                 ;3 61
+    sta PF1                 ;3 64
 
-    jmp exitDrawLava        ;3 69
+    jmp exitDrawPlayfield   ;3 67
 
-
-;--------------------------
+;--------------------------------------------------
 Kernel:
     sta WSYNC
     lda INTIM
@@ -395,56 +414,42 @@ Kernel:
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
-    lda LADDER_GFX,y        ;4 31
-    sta GRP1                ;3 34
-    dey                     ;2 36
-    sty LADDER_LINE_IDX     ;3 39
+    lda LADDER_GFX,y        ;4 29
+    sta GRP1                ;3 32
+    dey                     ;2 34
+    sty LADDER_LINE_IDX     ;3 37
 
 
 drawThePlayer:
 
-    ldy TMPNUM1             ;3 45
-    beq nope                ;2 47   PLAYER_LINE_IDX == 0
-    cpx PLAYERY             ;3 50   can we draw the player sprite?
-    bcs nope                ;2 52   < PLAYERY
+    ldy TMPNUM1             ;3 40
+    beq nope                ;2 42   PLAYER_LINE_IDX == 0
+    cpx PLAYERY             ;3 45   can we draw the player sprite?
+    bcs nope                ;2 47   < PLAYERY
 
-    lda PLAYERCOLORS,y      ;4 56    sets the player colors
-    sta COLUP0              ;3 59
-    lda (PLAYERPTR),y       ;5 64    let's load a line from a sprite frame
-    sta GRP0                ;3 67    and store it to the Player0 sprite
-    dec TMPNUM1             ;5 72
+    lda PLAYERCOLORS,y      ;4 51    sets the player colors
+    sta COLUP0              ;3 54
+    lda (PLAYERPTR),y       ;5 59    let's load a line from a sprite frame
+    sta GRP0                ;3 62    and store it to the Player0 sprite
+    dec TMPNUM1             ;5 67
 nope:
-    ldy LADDER_LINE_IDX     ;3 75
+    ldy LADDER_LINE_IDX     ;3 70
+
+    lda #GROUND_COLOR       ;2 72
 
     ;----------------------------------------------------------------
 
-    sta WSYNC           ;wait for the scanline to be drawn
+    sta WSYNC               ;wait for the scanline to be drawn
 
     ;----------------------------------------------------------------
 
-    lda #GROUND_COLOR       ;2 2
-    sta COLUPF              ;3 5
-
-
-    stx TEMP_X_INDEX        ;3 8    save scanline index
-
-    ldx TMPNUM              ;3 11
-
-    lda GAMEMAP0,x          ;4 15
-    sta PF0                 ;3 18
-
-    lda GAMEMAP1,x          ;4 22
-    sta PF1                 ;3 25
-
-    
-
-    jmp drawLava            ;3 6; faking subroutine
+    jmp drawPlayfield       ;3 3; faking subroutine
     ;----------------------------
-                            ;  69
-exitDrawLava:
+                            ;  67
+exitDrawPlayfield:
 
-    ldx LINE_IDX            ;3 72   decrement current line count for one map cell
-    dex                     ;2 74
+    ldx LINE_IDX            ;3 70   decrement current line count for one map cell
+    dex                     ;2 72
     ;---------------------------------------------
     sta WSYNC
     ;---------------------------------------------
@@ -924,8 +929,8 @@ Vsync:
     lda #0
     sta COLUBK ;reset the background color
     sta NUSIZ1
-    lda #%00110000
-    sta NUSIZ0 ;reset sprite special params
+    lda #%00110000  ;make the missile thick
+    sta NUSIZ0      ;reset sprite special params
 
 
     sta WSYNC
@@ -1402,7 +1407,7 @@ UpdatePrize:
 
     lda PRIZEX
     sec
-    sbc #18
+    sbc #MIN_DISTANCE_FROM_PRIZE
     
     bmi negativeX
     jmp comparePlayerX
@@ -1413,7 +1418,7 @@ comparePlayerX:
     bcs hidePrize
     lda PRIZEX
     clc
-    adc #18
+    adc #MIN_DISTANCE_FROM_PRIZE
     cmp PLAYERX
     bcc hidePrize
     lda PRIZEY
