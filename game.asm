@@ -17,6 +17,7 @@ MAX_PLAYER_LIVES                 = 3
 
 LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 15
+INITIAL_LAVA_SPEED               = 22
 MAX_LAVA_X                       = 11
 
 MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
@@ -33,6 +34,8 @@ LAVA_COLOR_AFTER                 = $14
 
 SCORE_FOR_PRIZE                  = 10
 MIN_DISTANCE_FROM_PRIZE          = 18
+
+DEATH_INTERVAL                   = 64
 
 
 NO_ILLEGAL_OPCODES               = 1 ; DASM needs it
@@ -132,20 +135,9 @@ Reset:
     sta SCREEN_FRAME
     sta COLUBK  ;black background everywhere
 
-    ;lda #1
     sta GAME_STATE
 
 
-    lda #20
-    sta LAVA_SPEED
-
-    lda LAVA_COLOR_BEFORE
-    sta CURRENT_LAVA_COLOR
-
-    lda #MAX_PLAYER_LIVES
-    sta PLAYER_LIVES
-
-    jsr EnterNewMap
 
 
 Main:
@@ -558,20 +550,21 @@ DrawScore:
     lda #0
     sta GRP0
     sta GRP1
+    sta REFP0           ;3  turn off mirroring
 
     lda #%00000011      ;2
     sta NUSIZ0          ;3
     sta NUSIZ1          ;3
 
-    sta REFP0           ;3  turn off mirroring
 
     sta WSYNC           ;let's draw an empty line
     SLEEP 22
     sta RESP0           ;2 reset sprite pos
     sta RESP1
 
+    sta HMCLR
     lda #$10           ;2  move p2 sprite left a bit
-    sta HMP1           ;3 
+    sta HMP1           ;3
 
 
     lda PLAYERS_COLOR   ;2
@@ -629,33 +622,30 @@ titleLoop:
     sta WSYNC               ;finish the scanline
     ;---------------------------------------------
 
-    lda TMPNUM             ;3 9
-    adc TMPNUM1
-    sta COLUPF             ;3 12
+    lda TMPNUM             ;3 3
+    adc TMPNUM1            ;3 6
+    sta COLUPF             ;3 9
 
-    lda TITLE0,y          ;4 16
-    sta PF0                 ;3 19
+    lda TITLE0,y           ;4 13
+    sta PF0                ;3 16
 
-    lda TITLE1,y          ;4 23
-    sta PF1                 ;3 26
+    lda TITLE1,y           ;4 20
+    sta PF1                ;3 23
 
-    lda TITLE2,y          ;4 30
-    sta PF2                 ;3 33
+    lda TITLE2,y           ;4 27
+    sta PF2                ;3 30
 
     ;------right side of the screen
 
-    lda TITLE3,y          ;4 37
-    sta PF0                 ;3 40
+    lda TITLE3,y           ;4 34
+    sta PF0                ;3 37
 
-    ;nop
+    lda TITLE4,y           ;4 41
+    sta PF1                ;3 44
 
-    lda TITLE4,y          ;4 44
-    sta PF1                 ;3 47
 
-    ;nop                     ;2 49
-
-    lda TITLE5,y          ;4 53
-    sta PF2                 ;3 56
+    lda TITLE5,y           ;4 48
+    sta PF2                ;3 51
 
 
     ldx TMPNUM
@@ -666,7 +656,6 @@ titleLoop:
 decreaseIdx:
     lda #20
     sta TMPNUM
-    ;dec TMPNUM1
     dey
 
     bpl titleLoop
@@ -961,7 +950,7 @@ lava_doneDividing:
     lda LAVAMAP0,y + MAPHEIGHT
     ldx TMPNUM              ;load x coord
     and MAP_FILL_PATTERN_BY_X_SEG2,x
-    bne ResetTheGame
+    bne PlayerDies
 
 
 lava_onlyOneSegmentUsed:
@@ -969,7 +958,7 @@ lava_onlyOneSegmentUsed:
     lda LAVAMAP0,y
     ldx TMPNUM
     and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne ResetTheGame
+    bne PlayerDies
 
 
 ;repeat the same check but with X2
@@ -990,7 +979,7 @@ lava_onlyOneSegmentUsed:
     lda LAVAMAP0,y + MAPHEIGHT
     ldx TMPNUM1              ;load x coord
     and MAP_FILL_PATTERN_BY_X_SEG2,x
-    bne ResetTheGame
+    bne PlayerDies
 
 
 lava_onlyOneSegmentUsed_2:
@@ -998,13 +987,13 @@ lava_onlyOneSegmentUsed_2:
     lda LAVAMAP0,y
     ldx TMPNUM1
     and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne ResetTheGame
+    bne PlayerDies
 
 
     jmp notCollidingWithLava
 
-ResetTheGame:
-    lda #64
+PlayerDies:
+    lda #DEATH_INTERVAL
     sta GAME_OVER_TIMER
 
 notCollidingWithLava:
@@ -1503,9 +1492,6 @@ digitsUpdate:
     tay        ; A -> Y
     lda SCORE_DIGITS_IDX,y
     and #$F
-    ;asl
-    ;asl
-    ;asl
     tax
 
     ldy TMPNUM ;restore Y
@@ -1542,7 +1528,7 @@ digitsUpdate:
     iny
 
     cpy #DIGITS_PTR_COUNT
-    bne digitsUpdate
+    bcc digitsUpdate
 
     rts
 ;----------------------------------------
@@ -1600,6 +1586,21 @@ TitleLogic
     
     lda #1
     sta GAME_STATE
+    lda #MAX_PLAYER_LIVES
+    sta PLAYER_LIVES
+    lda #0
+    sta SCORE_DIGITS_IDX
+    sta SCORE_DIGITS_IDX+1
+    sta SCORE_DIGITS_IDX+2
+    
+    lda #INITIAL_LAVA_SPEED
+    sta LAVA_SPEED
+
+    lda LAVA_COLOR_BEFORE
+    sta CURRENT_LAVA_COLOR
+
+    jsr EnterNewMap
+
 
     jmp titleNoInput
 
@@ -1622,6 +1623,21 @@ saveTmpNum:
 
     jsr UpdateSpriteFrames
 
+    ;lda #0
+    ;ldx #0
+    ;jsr SetSpriteXPos
+
+    ;sta WSYNC
+    ;sta HMOVE
+
+
+    rts
+
+;-----------------------------------------------------
+ResetTheGame
+
+    lda #0
+    sta GAME_STATE
     rts
 
 ;------------------------------------------------------
@@ -1647,7 +1663,7 @@ ResetThatGame:
     stx PLAYER_LIVES
     cpx #0
     bne enterNew
-    jsr Reset
+    jsr ResetTheGame
 there:
     lda GENERATING
     cmp #1
@@ -1673,7 +1689,7 @@ gameOverTimer:
     dex
     lda #8
     sta AUDC1
-    lda #64
+    lda #DEATH_INTERVAL
     sec
     sbc GAME_OVER_TIMER
     lsr
