@@ -296,78 +296,6 @@ nextLadder:
 
 
     rts
-;--------------------------------------------------
-TitleScreen:
-
-    sta WSYNC
-
-    ;lda #31
-    ;sta TMPNUM
-    ;ldy #5
-    ;lda #55             ;3 9
-    ;sta COLUPF             ;3 12
-;titleLoop:
-    
-;    sta WSYNC               ;finish the scanline
-    ;---------------------------------------------
-
-;    lda TITLE0,y          ;4 16
-;    sta PF0                 ;3 19
-
-;    lda TITLE1,y          ;4 23
-;    sta PF1                 ;3 26
-
-;    lda TITLE2,y          ;4 30
-;    sta PF2                 ;3 33
-
-    ;------right side of the screen
-
-;    lda TITLE3,y          ;4 37
-;    sta PF0                 ;3 40
-
-;    nop
-;    nop
-
-;    lda TITLE4,y          ;4 44
-;    sta PF1                 ;3 47
-    
-;    nop                     ;2 49
-
-;    lda TITLE5,y          ;4 53
-;    sta PF2                 ;3 56
-
-    
-
-;    ldx TMPNUM
-;    dex
-;    stx TMPNUM
-;    beq decreaseIdx
-;    jmp titleLoop
-;decreaseIdx:
-;    lda #31
-;    sta TMPNUM
-;    dey
-
-;    bpl titleLoop
-
-;    lda #0                  ;2 58   Lets turn off the playfield for one scanline
-;    sta PF0                 ;3 61
-;    sta PF1                 ;3 64
-;    sta PF2
-
-;    sta WSYNC
-
-    sta WSYNC
-    ldx #188
-    ldy #0
-titloop:
-    stx COLUBK
-    sta WSYNC
-    dex
-    bne titloop
-
-    rts
-
 ;------------------------------------------
 ; Fake subroutine
 drawPlayfield:
@@ -575,8 +503,58 @@ cont:
     ;==================================================
 doneDrawing:
 
-    ;let's draw a score
-    ;---------------------------------------------
+    jsr DrawScore
+
+    lda #0
+    sta GRP0
+    sta GRP1
+    sta GRP0
+    sta GRP1
+
+    sta WSYNC   ;let's draw an empty line
+    sta HMOVE
+
+    ldy PLAYER_LIVES ;3 2
+    lda LIVES_LOOKUP,y
+    sta NUSIZ0       ;3 5
+
+    lda #LIVES_BG  ;2 10
+    sta COLUBK     ;3 13
+    lda #0         ;2 15
+    ;SLEEP 2        ;6 21
+
+    sta RESP0      ;2 reset sprite pos
+
+    lda #$0        ;2
+    sta HMP0       ;3  reset p1 x offset
+
+
+    ldy #PLAYERHEIGHT
+
+lives_bar_loop:
+
+    sta WSYNC
+    sta HMOVE
+    lda PLAYER_LIVES
+    cmp #1
+    beq no_life
+    lda DWARF_GFX_3,y
+    sta GRP0
+
+    jmp next_live_line
+no_life:
+    lda #0
+    sta GRP0
+next_live_line:
+    sta HMCLR   ; let's clear HM
+    dey
+    bne lives_bar_loop
+endofKernel:
+
+    rts
+;--------------------------------------------------------------
+DrawScore:
+
     lda #0
     sta GRP0
     sta GRP1
@@ -634,54 +612,90 @@ score_line_loop:
     dec TEMP_X_INDEX        ;5 48
     bpl score_line_loop     ;2 50
 
-;----------------------------------------
-    lda #0
-    sta GRP0
-    sta GRP1
-    sta GRP0
-    sta GRP1
-
-    sta WSYNC   ;let's draw an empty line
-    sta HMOVE
-
-    ldy PLAYER_LIVES ;3 2
-    lda LIVES_LOOKUP,y
-    sta NUSIZ0       ;3 5
-
-    lda #LIVES_BG  ;2 10
-    sta COLUBK     ;3 13
-    lda #0         ;2 15
-    ;SLEEP 2        ;6 21
-
-    sta RESP0      ;2 reset sprite pos
-
-    lda #$0        ;2
-    sta HMP0       ;3  reset p1 x offset
-
-
-    ldy #PLAYERHEIGHT
-
-lives_bar_loop:
-
-    sta WSYNC
-    sta HMOVE
-    lda PLAYER_LIVES
-    cmp #1
-    beq no_life
-    lda DWARF_GFX_3,y
-    sta GRP0
-
-    jmp next_live_line
-no_life:
-    lda #0
-    sta GRP0
-next_live_line:
-    sta HMCLR   ; let's clear HM
-    dey
-    bne lives_bar_loop
-endofKernel:
 
     rts
+
+
+;---------------------------------------------------------------
+TitleScreen:
+
+    sta WSYNC
+
+    lda #20
+    sta TMPNUM
+    ldy #5
+titleLoop:
+    
+    sta WSYNC               ;finish the scanline
+    ;---------------------------------------------
+
+    lda TMPNUM             ;3 9
+    adc TMPNUM1
+    sta COLUPF             ;3 12
+
+    lda TITLE0,y          ;4 16
+    sta PF0                 ;3 19
+
+    lda TITLE1,y          ;4 23
+    sta PF1                 ;3 26
+
+    lda TITLE2,y          ;4 30
+    sta PF2                 ;3 33
+
+    ;------right side of the screen
+
+    lda TITLE3,y          ;4 37
+    sta PF0                 ;3 40
+
+    ;nop
+
+    lda TITLE4,y          ;4 44
+    sta PF1                 ;3 47
+
+    ;nop                     ;2 49
+
+    lda TITLE5,y          ;4 53
+    sta PF2                 ;3 56
+
+
+    ldx TMPNUM
+    dex
+    stx TMPNUM
+    beq decreaseIdx
+    jmp titleLoop
+decreaseIdx:
+    lda #20
+    sta TMPNUM
+    ;dec TMPNUM1
+    dey
+
+    bpl titleLoop
+
+    lda #0                  ;2 58   Lets turn off the playfield for one scanline
+    sta PF0                 ;3 61
+    sta PF1                 ;3 64
+    sta PF2
+
+    sta WSYNC
+
+    ldx #20
+emptyLoop:
+    sta WSYNC
+    dex
+    bne emptyLoop
+
+    jsr DrawScore
+
+    ldx #36
+emptyLoop1:
+    sta WSYNC
+    dex
+    bne emptyLoop1
+
+
+    rts
+
+
 ;---------------------------------------------------------------
 
 Overscan:
@@ -1594,6 +1608,19 @@ titleButtonNotPressed:
     sta BUTTON_PRESSED
 
 titleNoInput:
+    
+
+    ldx TMPNUM1
+    dex
+    bmi resetTmpNum
+    jmp saveTmpNum
+resetTmpNum:
+    ldx #68
+saveTmpNum:
+    stx TMPNUM1
+
+
+    jsr UpdateSpriteFrames
 
     rts
 
@@ -2110,40 +2137,40 @@ TITLE0
     .byte %10000000
     .byte %10000000
 TITLE1
+    .byte %11100001
+    .byte %00010010
+    .byte %00001010
+    .byte %00001010
+    .byte %00010010
     .byte %11100010
-    .byte %00010101
-    .byte %00010100
-    .byte %00010100
-    .byte %00010100
-    .byte %11101000
 TITLE2
-    .byte %10010010
-    .byte %11110101
-    .byte %10010100
-    .byte %10010100
-    .byte %10010100
-    .byte %01101000
+    .byte %10011001
+    .byte %10100110
+    .byte %10100110
+    .byte %10100000
+    .byte %10100000
+    .byte %00100000
 TITLE3
-    .byte %00100000
-    .byte %00100000
-    .byte %11100000
-    .byte %00100000
-    .byte %00100000
-    .byte %11100000
+    .byte %00000000
+    .byte %00000000
+    .byte %11110000
+    .byte %00000000
+    .byte %00000000
+    .byte %11110000
 TITLE4
-    .byte %01010000
-    .byte %01010000
-    .byte %10011110
-    .byte %01010000
-    .byte %01010000
-    .byte %10011110
+    .byte %10100110
+    .byte %10101000
+    .byte %10111110
+    .byte %10100001
+    .byte %10100001
+    .byte %00111110
 TITLE5
-    .byte %11110000
-    .byte %11110000
-    .byte %11110000
-    .byte %11110000
-    .byte %11110000
-    .byte %11110000
+    .byte %00000010
+    .byte %00000010
+    .byte %00011110
+    .byte %00000010
+    .byte %00000010
+    .byte %00011110
 
 
     ;87 bytes used of 256
