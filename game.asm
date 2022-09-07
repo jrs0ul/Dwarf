@@ -90,6 +90,7 @@ RANDOM                  ds 1  ;random 8bit number
 PLAYERPTR               ds 2  ;16bit address of the active sprites's frame graphics
 PLAYER_FRAME            ds 1  ;frame index
 
+PRIZE_SOUND_INTERVAL    ds 1
 GAME_OVER_TIMER         ds 1
 CURRENT_LAVA_COLOR      ds 1
 PRIZEX                  ds 1
@@ -98,7 +99,6 @@ CURRENT_PRIZE_Y         ds 1
 SCREEN_FRAME            ds 1
 
 GAME_STATE              ds 1
-PRIZE_SOUND_INTERVAL    ds 1
 
 SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits, 4 bits - one digit
 TMPNUM                  ds 1
@@ -696,6 +696,11 @@ Overscan:
     sta TIM64T
 
     ;some game logic here
+
+    lda GENERATING
+    cmp #1
+    beq notColliding
+
     ;----------
     lda GAME_OVER_TIMER
     bne notColliding
@@ -773,8 +778,6 @@ doneMining:
 
 notMining:           ; some kind of collision
 
-
-
     lda OLDPLAYERX   ; let's restore previous player state before the collision
     sta PLAYERX
     lda OLDPLAYERY
@@ -789,23 +792,35 @@ notColliding:
     bvs hideDemPrize        ;the 6th bit is set
     jmp checkLadderCollision
 hideDemPrize:
-    lda #128                ;some other value than 255
+    lda #32                ;some other value than 255
+    sta CURRENT_PRIZE_Y
+    sta PRIZE_SOUND_INTERVAL
     lda #LAVA_SLEEP_AFTER_PRIZE
     sta LAVA_SLEEP          ;freeze lava
-    sta CURRENT_PRIZE_Y
+    ;lda #32
     lda #SCORE_FOR_PRIZE
     ldy #0
     ldx #0
     jsr IncrementScore
 
 checkLadderCollision:
-    
+    jsr LadderCollision
+
+
+OverscanLoop:
+    sta WSYNC
+    lda INTIM
+    bne OverscanLoop
+
+    rts
+;-----------------------------
+LadderCollision:
     bit CXPPMM
-    bpl OverscanLoop
+    bpl exitLadderCollision
 
     lda PLAYER_FRAME
     cmp #%00010000
-    bne OverscanLoop
+    bne exitLadderCollision
 
     lda PLAYERX
     clc
@@ -826,11 +841,7 @@ setLadderXToPlayer:
     sta PLAYERX
     sta OLDPLAYERX
 
-
-OverscanLoop:
-    sta WSYNC
-    lda INTIM
-    bne OverscanLoop
+exitLadderCollision:
 
     rts
 ;-----------------------------
@@ -1165,8 +1176,7 @@ storeOldY:
 checkButton:
 ;----------------------------------------------
 
-    lda #0
-    sta AUDV0
+
     bit INPT4   ;checking button press;
     bmi buttonNotPressed ;jump if the button wasn't pressed
     ;----
@@ -1180,6 +1190,7 @@ checkButton:
     lda #%00011111  ; after 3 x lsr it will turn into 3(4th frame - mining)
     sta PLAYER_FRAME
 
+    
     lda #2
     sta AUDC0
     lda #1
@@ -1629,14 +1640,31 @@ saveTmpNum:
     rts
 
 ;-----------------------------------------------------
-ResetTheGame
+ResetTheGame:
 
     lda #0
     sta GAME_STATE
     rts
 
 ;------------------------------------------------------
+AnimateLavaColor:
+    ldx CURRENT_LAVA_COLOR
+    lda LAVA_TIMER
+    lsr
+    cmp #2
+    bcs gameOverTimer
+    dex
+    cpx #LAVA_COLOR_AFTER
+    beq resetLavaColor
+    jmp gameOverTimer
+resetLavaColor:
+    ldx #LAVA_COLOR_BEFORE
+gameOverTimer:
+    stx CURRENT_LAVA_COLOR
+;--
 
+    rts
+;------------------------------------------------------
 VBlank:
 
     lda GAME_STATE
@@ -1663,21 +1691,20 @@ there:
     lda GENERATING
     cmp #1
     beq notReached
-;-- lava color animation
-    ldx CURRENT_LAVA_COLOR
-    lda LAVA_TIMER
-    lsr
-    cmp #2
-    bcs gameOverTimer
+
+    ldx PRIZE_SOUND_INTERVAL
+    beq animLavaColor
+    stx AUDF0
+    lda #8
+    sta AUDV0
+    lda #4
+    sta AUDC0
     dex
-    cpx #LAVA_COLOR_AFTER
-    beq resetLavaColor
-    jmp gameOverTimer
-resetLavaColor:
-    ldx #LAVA_COLOR_BEFORE
-gameOverTimer:
-    stx CURRENT_LAVA_COLOR
-;--
+    stx PRIZE_SOUND_INTERVAL
+
+animLavaColor:
+    jsr AnimateLavaColor
+
     lda GAME_OVER_TIMER
     beq noGameOver
     tax
@@ -1701,6 +1728,12 @@ noGameOver:
     jsr LavaLogic
 
 movePlayer:
+    lda PRIZE_SOUND_INTERVAL
+    bne checkButtonPress
+    lda #0
+    sta AUDV0
+checkButtonPress:
+
     jsr ProcessInput
 
 updatePlayerSpriteX:
