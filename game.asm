@@ -552,6 +552,7 @@ DrawScore:
     sta GRP0
     sta GRP1
     sta REFP0           ;3  turn off mirroring
+    sta REFP1
 
     lda #%00000011      ;2
     sta NUSIZ0          ;3
@@ -1063,10 +1064,13 @@ IncrementScore:
 
 ;---------------------------
 ProcessInput:
+
     lda SWCHA
     asl         ;shift left, bit might fall into CARRY flag
     sta TMPNUM
     bcs checkLeft
+    lda TMPNUM1
+    bne checkLeft
 moveRight:
     lda PLAYER_FLIP
     beq itWasFacingRightAlready ; if facing right
@@ -1075,8 +1079,12 @@ moveRight:
     sta PLAYER_FLIP
     lda #12
     sta PLAYER_FRAME
-    inc PLAYERX ; add +2 to prevent getting stuck in a wall
-    inc PLAYERX
+
+    lda PLAYERX; add +2 to prevent getting stuck in a wall
+    clc
+    adc #2
+    sta PLAYERX
+
 itWasFacingRightAlready:
 
     lda PLAYERX
@@ -1087,6 +1095,8 @@ itWasFacingRightAlready:
   
     ldx PLAYERX
     stx OLDPLAYERX
+    ldx PLAYERY
+    stx OLDPLAYERY
     sta PLAYERX
   
     
@@ -1112,6 +1122,8 @@ checkLeft:
     asl
     sta TMPNUM
     bcs checkDown
+    lda TMPNUM1
+    bne checkDown
 moveLeft:
 
     lda PLAYER_FLIP
@@ -1133,6 +1145,8 @@ itwasFacingLeftAlready:
     bcc checkDown
     ldx PLAYERX
     stx OLDPLAYERX
+    ldx PLAYERY
+    stx OLDPLAYERY
     sta PLAYERX
        ;----------
 
@@ -1664,6 +1678,29 @@ gameOverTimer:
 ;--
 
     rts
+;-----------------------------------------------------
+CheckIfPlayerAtTheBottomOfRow:
+    lda PLAYERY
+    ldx #0
+PI_divy:
+    cmp #10
+    bcc processInput_doneDiv
+    sec
+    sbc #10
+    inx
+    jmp PI_divy
+processInput_doneDiv:
+    lda PLAYERY
+    cmp Y_POSITIONS_WHERE_YOU_CAN_MINE,x
+    bne dontLetMoveHorizontaly
+    lda #0
+    jmp processInput_storeTmpnum1
+dontLetMoveHorizontaly:
+    lda #255
+processInput_storeTmpnum1:
+    sta TMPNUM1
+
+    rts
 ;------------------------------------------------------
 VBlank:
 
@@ -1733,6 +1770,8 @@ movePlayer:
     lda #0
     sta AUDV0
 checkButtonPress:
+
+    jsr CheckIfPlayerAtTheBottomOfRow
 
     jsr ProcessInput
 
