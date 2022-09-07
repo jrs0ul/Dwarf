@@ -82,7 +82,6 @@ OLDPLAYERY              ds 1   ;Fallback data when player colides with a wall
 OLDPLAYERX              ds 1
 OLDPLAYER_FRAME         ds 1
 
-PLAYER_DIR              ds 1  ; Player's direction
 PLAYER_FLIP             ds 1
 PLAYER_LIVES            ds 1
 
@@ -99,7 +98,7 @@ CURRENT_PRIZE_Y         ds 1
 SCREEN_FRAME            ds 1
 
 GAME_STATE              ds 1
-;PRIZE_SOUND_INTERVAL    ds 1
+PRIZE_SOUND_INTERVAL    ds 1
 
 SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits, 4 bits - one digit
 TMPNUM                  ds 1
@@ -715,8 +714,8 @@ Overscan:
     bne notMining
     ;player is coliding with the playfield and swings his axe
 
-    lda PLAYER_DIR
-    cmp #1
+    lda PLAYER_FLIP
+    cmp #0  ; facing right
     bne checkCellCollision
     lda PLAYERX
     adc #X_OFFSET_TO_RIGHT_FOR_MINING       ;need to add a bit to player x, when it's facing right
@@ -762,8 +761,8 @@ doneDividing:
 doneMining:
 
     ;----   Let's restore the X
-    lda PLAYER_DIR
-    cmp #1
+    lda PLAYER_FLIP
+    cmp #0 ; facing right
     bne notColliding ;let's not reset the animation frame
     lda PLAYERX
     clc
@@ -1058,9 +1057,8 @@ ProcessInput:
     sta TMPNUM
     bcs checkLeft
 moveRight:
-    lda PLAYER_DIR
-    cmp #1
-    beq itWasFacingRightAlready
+    lda PLAYER_FLIP
+    beq itWasFacingRightAlready ; if facing right
     lda #%00000000
     sta REFP0
     sta PLAYER_FLIP
@@ -1070,8 +1068,6 @@ moveRight:
     inc PLAYERX
 itWasFacingRightAlready:
 
-    lda #1
-    sta PLAYER_DIR
     lda PLAYERX
     clc
     adc #1
@@ -1107,8 +1103,8 @@ checkLeft:
     bcs checkDown
 moveLeft:
 
-    lda PLAYER_DIR
-    cmp #2
+    lda PLAYER_FLIP
+    cmp #8; facing left
     beq itwasFacingLeftAlready
     lda #%00001000
     sta REFP0
@@ -1118,9 +1114,6 @@ moveLeft:
     dec PLAYERX
     dec PLAYERX
 itwasFacingLeftAlready:
-
-    lda #2
-    sta PLAYER_DIR
 
     lda PLAYERX
     sec
