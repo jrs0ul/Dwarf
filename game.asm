@@ -17,16 +17,19 @@ MAX_PLAYER_LIVES                 = 3
 
 LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 15
-INITIAL_LAVA_SPEED               = 22
+LAVA_SLEEP_AFTER_PRIZE           = 10
+INITIAL_LAVA_SPEED               = 22; could 10 be a minimum ?
 MAX_LAVA_X                       = 11
 
 MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
 
+;Main goal
 GOALX                            = 130
 GOALY                            = 12
 
+;Colors
 LIVES_BG                         = $80
-PLAYERS_COLOR                    = 15
+SCORE_COLOR                      = 15
 LADDERS_COLOR                    = $C6
 GROUND_COLOR                     = $93
 LAVA_COLOR_BEFORE                = $34
@@ -96,6 +99,7 @@ CURRENT_PRIZE_Y         ds 1
 SCREEN_FRAME            ds 1
 
 GAME_STATE              ds 1
+;PRIZE_SOUND_INTERVAL    ds 1
 
 SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits, 4 bits - one digit
 TMPNUM                  ds 1
@@ -121,9 +125,7 @@ Reset:
 
     CLEAN_START ; from macro.h
 
-    lda #PLAYERS_COLOR
-    sta COLUP0
-
+    lda #1
     sta RANDOM
 
     lda #%00010100 ;make thin ball-ray and the playfield on top of everything
@@ -513,7 +515,7 @@ doneDrawing:
     lda #LIVES_BG  ;2 10
     sta COLUBK     ;3 13
     lda #0         ;2 15
-    ;SLEEP 2        ;6 21
+    SLEEP 2        ;6 21
 
     sta RESP0      ;2 reset sprite pos
 
@@ -567,7 +569,7 @@ DrawScore:
     sta HMP1           ;3
 
 
-    lda PLAYERS_COLOR   ;2
+    lda SCORE_COLOR     ;2
     sta COLUP1          ;3 
     sta COLUP0          ;3 
 
@@ -789,7 +791,7 @@ notColliding:
     jmp checkLadderCollision
 hideDemPrize:
     lda #128                ;some other value than 255
-    lda #10
+    lda #LAVA_SLEEP_AFTER_PRIZE
     sta LAVA_SLEEP          ;freeze lava
     sta CURRENT_PRIZE_Y
     lda #SCORE_FOR_PRIZE
