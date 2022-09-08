@@ -16,9 +16,10 @@ MAX_PLAYER_X                     = 140
 MAX_PLAYER_LIVES                 = 3
 
 LAVA_START_POS                   = $05 ; x=0; y=5
-INITIAL_LAVA_SLEEP               = 15
+INITIAL_LAVA_SLEEP               = 10
 LAVA_SLEEP_AFTER_PRIZE           = 10
-INITIAL_LAVA_SPEED               = 22; could 10 be a minimum ?
+INITIAL_LAVA_DELAY               = 30
+MINIMUM_LAVA_DELAY               = 7
 MAX_LAVA_X                       = 11
 
 MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
@@ -75,7 +76,7 @@ PLAYERX                 ds 1  ; Player's X position
 LAVA_POS                ds 1  ;4 bits X, 4 bits Y
 LAVA_TIMER              ds 1  ;Hazzard's delay
 LAVA_DIR                ds 1  ;Hazzard's direction
-LAVA_SPEED              ds 1
+LAVA_DELAY              ds 1  ;Limit for the timer to increment
 LAVA_SLEEP              ds 1  ;Makes lava inactive
 
 OLDPLAYERY              ds 1   ;Fallback data when player colides with a wall
@@ -149,6 +150,10 @@ Main:
     jmp Main
 ;--------------------------
 EnterNewMap:
+    
+    lda #INITIAL_LAVA_DELAY
+    sta LAVA_DELAY
+
     ;set player coordinates
     lda #MAX_PLAYER_Y
     sta PLAYERY
@@ -798,7 +803,6 @@ hideDemPrize:
     sta PRIZE_SOUND_INTERVAL
     lda #LAVA_SLEEP_AFTER_PRIZE
     sta LAVA_SLEEP          ;freeze lava
-    ;inc LAVA_SPEED
     lda #SCORE_FOR_PRIZE
     ldy #0
     ldx #0
@@ -1336,8 +1340,9 @@ LavaLogic:
     lda #6
     sta AUDV1
 
-    cpy LAVA_SPEED ;if LAVA_TIMER reaches the value of LAVA_SPEED, lava starts to move
+    cpy LAVA_DELAY ;if LAVA_TIMER reaches the value of LAVA_DELAY, lava starts to move
     bcc lavaDelay
+
 
     ldx LAVA_SLEEP
     cpx #0
@@ -1351,6 +1356,13 @@ lavaSlumber:
 
 
 moveTheLava:
+
+    ldx LAVA_DELAY
+    dex
+    cpx #MINIMUM_LAVA_DELAY
+    bcc skipSmallerThanMinimumDelay
+    stx LAVA_DELAY
+skipSmallerThanMinimumDelay:
 
     jsr FillInLavaTile
 ;----
@@ -1603,9 +1615,6 @@ TitleLogic
     sta SCORE_DIGITS_IDX
     sta SCORE_DIGITS_IDX+1
     sta SCORE_DIGITS_IDX+2
-    
-    lda #INITIAL_LAVA_SPEED
-    sta LAVA_SPEED
 
     lda LAVA_COLOR_BEFORE
     sta CURRENT_LAVA_COLOR
@@ -1620,7 +1629,6 @@ titleButtonNotPressed:
     sta BUTTON_PRESSED
 
 titleNoInput:
-    
 
     ldx TMPNUM1
     dex
@@ -1789,7 +1797,6 @@ continueVBlank:
     lda PLAYERY
     cmp #GOALY
     bcs notReached
-    dec LAVA_SPEED
 enterNew:
     jsr EnterNewMap
 notReached:
