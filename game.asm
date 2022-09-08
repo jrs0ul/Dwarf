@@ -295,6 +295,18 @@ saveLadderPostionToRam:
     sta LADDER1X,y              ;  store sprite position to ram variable
 
 
+   
+
+nextLadder:
+    dec TEMPY
+    bpl ladderLoop
+
+
+    rts
+;------------------------------------------
+;X - ladder x
+;TEMPY - ladder y
+RemoveGroundForLadders:
     lda MAP_3CELLS_LOOKUP,x
     clc
     adc TEMPY
@@ -319,12 +331,8 @@ onlyOneSegmentUsed:
     sta GAMEMAP0,y
 
 
-nextLadder:
-    dec TEMPY
-    bpl ladderLoop
-
-
     rts
+
 ;------------------------------------------
 ; Fake subroutine
 drawPlayfield:
@@ -472,8 +480,8 @@ drawThePlayer:
     cpx PLAYERY             ;3 45   can we draw the player sprite?
     bcs nope                ;2 47   < PLAYERY
 
-    lda PLAYERCOLORS,y      ;4 51    sets the player colors
-    sta COLUP0              ;3 54
+    ;lda PLAYERCOLORS,y      ;4 51    sets the player colors
+    ;sta COLUP0              ;3 54
     lda (PLAYERPTR),y       ;5 59    let's load a line from a sprite frame
     sta GRP0                ;3 62    and store it to the Player0 sprite
     dec TMPNUM1             ;5 67
@@ -514,7 +522,9 @@ divLoop:
     sta RESP1
     sta HMP1
 
-    ldy #LADDERHEIGHT       ;2 7  reset the ladder sprite
+    lda LADDER1X,x;#LADDERHEIGHT       ;2 7  reset the ladder sprite
+    and #$0F
+    tay
     ;---------------------------------------------
     sta WSYNC
     ;---------------------------------------------
@@ -1633,6 +1643,46 @@ dontUpdatePrize:
 
     rts
 ;------------------------------------------------------
+UpdateLadders:
+
+    ldy #5
+loopThroughLadders:
+
+    lda Y_POSITIONS_WHERE_YOU_CAN_MINE,y
+    cmp PLAYERY
+    beq playerRowFound
+
+    dey
+    bpl loopThroughLadders
+    jmp exitLadderUpdate
+playerRowFound:
+    dey
+    sty TEMPY
+    lda LADDER1X,y
+    tay
+
+    sec
+    sbc #MIN_DISTANCE_FROM_PRIZE
+    
+    bmi ladder_negativeX
+    jmp ladder_comparePlayerX
+ladder_negativeX:
+    lda #0
+ladder_comparePlayerX:
+    cmp PLAYERX
+    bcs exitLadderUpdate
+
+    tya
+    clc
+    adc #MIN_DISTANCE_FROM_PRIZE
+    cmp PLAYERX
+    bcc exitLadderUpdate
+
+    ldx LADDER_SPRITE_X_TO_CELL_X,y
+    jsr RemoveGroundForLadders
+exitLadderUpdate:
+    rts
+;------------------------------------------------------
 TitleLogic
 
     bit INPT4   ;checking button press;
@@ -1730,6 +1780,19 @@ processInput_storeTmpnum1:
     sta TMPNUM1
 
     rts
+;--------------------------------------
+PlayPrizeSound:
+    ldx PRIZE_SOUND_INTERVAL
+    beq exitPlayPrizeSound
+    stx AUDF0
+    lda #8
+    sta AUDV0
+    lda #4
+    sta AUDC0
+    dex
+    stx PRIZE_SOUND_INTERVAL
+exitPlayPrizeSound:
+    rts
 ;------------------------------------------------------
 VBlank:
 
@@ -1759,18 +1822,9 @@ there:
     lda GENERATING
     cmp #1
     beq notReached
-
-    ldx PRIZE_SOUND_INTERVAL
-    beq animLavaColor
-    stx AUDF0
-    lda #8
-    sta AUDV0
-    lda #4
-    sta AUDC0
-    dex
-    stx PRIZE_SOUND_INTERVAL
-
-animLavaColor:
+    
+    jsr PlayPrizeSound
+    
     jsr AnimateLavaColor
 
     lda GAME_OVER_TIMER
@@ -1809,6 +1863,7 @@ checkButtonPress:
 updatePlayerSpriteX:
 
     jsr UpdatePrize
+    jsr UpdateLadders
 
     lda PLAYERX
     ldx #0
@@ -2286,6 +2341,140 @@ TITLE5
     .byte %00000010
     .byte %00011110
 
+LADDER_SPRITE_X_TO_CELL_X
+    .byte 0;0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 1;12
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 2 ;24
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 3 ;36
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 4 ;48
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 5 ;60
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 6
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 7
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 8
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 9
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 10
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 0
+    .byte 11
 
     ;87 bytes used of 256
 
