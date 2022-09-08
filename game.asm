@@ -96,7 +96,6 @@ CURRENT_LAVA_COLOR      ds 1
 PRIZEX                  ds 1
 PRIZEY                  ds 1
 CURRENT_PRIZE_Y         ds 1
-SCREEN_FRAME            ds 1
 
 GAME_STATE              ds 1
 
@@ -110,8 +109,9 @@ LADDER_LINE_IDX         ds 1
 LINE_IDX                ds 1  ; line counter for a map cell
 
 SCORE_PTR               ds DIGITS_PTR_COUNT  ; pointers to digit graphics
-GENERATING              ds 1   ;Is the map being generared at the moment?
 BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
+GENERATING              ds 1   ;Is the map being generared at the moment?
+SCREEN_FRAME            ds 1
 
 ;------------------------------------------------------
 ;                  123 | 5 bytes free
@@ -798,7 +798,7 @@ hideDemPrize:
     sta PRIZE_SOUND_INTERVAL
     lda #LAVA_SLEEP_AFTER_PRIZE
     sta LAVA_SLEEP          ;freeze lava
-    ;lda #32
+    ;inc LAVA_SPEED
     lda #SCORE_FOR_PRIZE
     ldy #0
     ldx #0
@@ -1058,10 +1058,21 @@ IncrementScore:
     sty TMPNUM
     lda SCORE_DIGITS_IDX+2
     adc TMPNUM
-    ;sta SCORE_DIGITS_IDX+2
+    sta SCORE_DIGITS_IDX+2
     cld
     rts
-
+;---------------------------
+IncreaseTheFrame
+    ldx PLAYER_FRAME
+    inx
+    cpx #16 ;we must not let go to animation frame 3, 00010 000
+    bcc storeframe1
+    ldx #0
+storeframe1:
+    lda PLAYER_FRAME
+    sta OLDPLAYER_FRAME
+    stx PLAYER_FRAME
+    rts
 ;---------------------------
 ProcessInput:
 
@@ -1098,22 +1109,15 @@ itWasFacingRightAlready:
     ldx PLAYERY
     stx OLDPLAYERY
     sta PLAYERX
-  
-    
-    ldx PLAYER_FRAME
-    inx
-    cpx #16 ;we must not let go to animation frame 3, 00010 000
-    bcc storeframe1
-    ldx #0
-storeframe1:
-    lda PLAYER_FRAME
-    sta OLDPLAYER_FRAME
-    stx PLAYER_FRAME
+ 
 
-    ;so left was activated, let's skip right direction
+    ;so right was activated, let's skip left direction
     lda TMPNUM
     asl
     sta TMPNUM
+
+    
+    jsr IncreaseTheFrame
     jmp checkButton
 
 
@@ -1148,19 +1152,8 @@ itwasFacingLeftAlready:
     ldx PLAYERY
     stx OLDPLAYERY
     sta PLAYERX
-       ;----------
 
-    
-    ldx PLAYER_FRAME
-    inx
-    cpx #16 ;we must not let go to animation frame 3, 00010 000
-    bcc storeframe2
-    ldx #0
-storeframe2:
-    lda PLAYER_FRAME
-    sta OLDPLAYER_FRAME
-    stx PLAYER_FRAME
-
+    jsr IncreaseTheFrame
     jmp checkButton
 
 checkDown:
@@ -1189,8 +1182,6 @@ storeOldY:
     jmp noInput
 checkButton:
 ;----------------------------------------------
-
-
     bit INPT4   ;checking button press;
     bmi buttonNotPressed ;jump if the button wasn't pressed
     ;----
@@ -1222,7 +1213,7 @@ noInput:
 
     rts
 
-;-----------------------------------------
+;------------------------------------------
 
 UpdateRandomNumber:
 
@@ -1642,14 +1633,6 @@ saveTmpNum:
 
 
     jsr UpdateSpriteFrames
-
-    ;lda #0
-    ;ldx #0
-    ;jsr SetSpriteXPos
-
-    ;sta WSYNC
-    ;sta HMOVE
-
 
     rts
 
