@@ -19,7 +19,7 @@ LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 10
 LAVA_SLEEP_AFTER_PRIZE           = 10
 INITIAL_LAVA_DELAY               = 30
-MINIMUM_LAVA_DELAY               = 7
+MINIMUM_LAVA_DELAY               = 8
 MAX_LAVA_X                       = 11
 
 MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
@@ -75,7 +75,6 @@ PLAYERX                 ds 1  ; Player's X position
 
 LAVA_POS                ds 1  ;4 bits X, 4 bits Y
 LAVA_TIMER              ds 1  ;Hazzard's delay
-LAVA_DIR                ds 1  ;Hazzard's direction
 LAVA_DELAY              ds 1  ;Limit for the timer to increment
 LAVA_SLEEP              ds 1  ;Makes lava inactive
 
@@ -84,8 +83,6 @@ OLDPLAYERX              ds 1
 OLDPLAYER_FRAME         ds 1
 
 PLAYER_FLIP             ds 1
-PLAYER_LIVES            ds 1
-
 RANDOM                  ds 1  ;random 8bit number
 
 PLAYERPTR               ds 2  ;16bit address of the active sprites's frame graphics
@@ -97,6 +94,8 @@ CURRENT_LAVA_COLOR      ds 1
 PRIZEX                  ds 1
 PRIZEY                  ds 1
 CURRENT_PRIZE_Y         ds 1
+
+ROOMS_COMPLETED         ds 1
 
 GAME_STATE              ds 1
 
@@ -113,6 +112,12 @@ SCORE_PTR               ds DIGITS_PTR_COUNT  ; pointers to digit graphics
 BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
 GENERATING              ds 1   ;Is the map being generared at the moment?
 SCREEN_FRAME            ds 1
+
+;reusing gamemap0's empty 4 bits
+    ORG GAMEMAP0
+
+LAVA_DIR                ds 1
+PLAYER_LIVES            ds 1
 
 ;------------------------------------------------------
 ;                  123 | 5 bytes free
@@ -151,7 +156,18 @@ Main:
 ;--------------------------
 EnterNewMap:
     
+    ;lda ROOMS_COMPLETED
+    ;lsr
+    ;sta TMPNUM
     lda #INITIAL_LAVA_DELAY
+    cmp ROOMS_COMPLETED
+    bcc SetMinimumDelay
+    sec
+    sbc ROOMS_COMPLETED
+    jmp storeLavaDelay
+SetMinimumDelay:
+    lda #MINIMUM_LAVA_DELAY
+storeLavaDelay:
     sta LAVA_DELAY
 
     ;set player coordinates
@@ -196,8 +212,8 @@ EnterNewMap:
 
     ldx #0
 genloop:
-    
-    lda #%10000000
+    lda GAMEMAP0,x
+    ora #128
     sta GAMEMAP0,x
     lda #$FF
     sta GAMEMAP1,x
@@ -230,6 +246,23 @@ ladderLoop:                     ;  let's generate a ladder for each of the map r
     jsr UpdateRandomNumber
     and #11                     ;  limit to 0..11 range
     tax                         ;  and transfer to X register
+
+    ldy TEMPY
+    cpy #4
+    beq secondRowCheck
+    jmp compareLastRow
+secondRowCheck:
+    cmp #2                      ; don't put ladder in first two cells
+    bcc ladderLoop
+compareLastRow:
+    cpy #0
+    beq lastRowCheck
+    jmp compareToPrev
+lastRowCheck:
+    cmp #9                      ;don't let place ladders near the exit point
+    bcs ladderLoop
+
+compareToPrev:
     cmp TMPNUM1
     bcs XIsBiggerOrEqual        ; this X is bigger or equal
 
@@ -288,9 +321,7 @@ onlyOneSegmentUsed:
 
 nextLadder:
     dec TEMPY
-    lda TEMPY
-    cmp #255
-    bne ladderLoop
+    bpl ladderLoop
 
 
     rts
@@ -508,18 +539,19 @@ doneDrawing:
     sta GRP1
     sta GRP0
     sta GRP1
+    lda PLAYER_LIVES ;3 2
 
     sta WSYNC   ;let's draw an empty line
     sta HMOVE
 
-    ldy PLAYER_LIVES ;3 2
+    and #$0F
+    tay
     lda LIVES_LOOKUP,y
     sta NUSIZ0       ;3 5
 
     lda #LIVES_BG  ;2 10
     sta COLUBK     ;3 13
     lda #0         ;2 15
-    SLEEP 2        ;6 21
 
     sta RESP0      ;2 reset sprite pos
 
@@ -534,6 +566,7 @@ lives_bar_loop:
     sta WSYNC
     sta HMOVE
     lda PLAYER_LIVES
+    and #$0F
     cmp #1
     beq no_life
     lda DWARF_GFX_3,y
@@ -1327,6 +1360,21 @@ onlyONE:
     sta AUDV1
 
     rts
+;------------------------
+StoreLavaPosX
+    txa
+    asl
+    asl
+    asl
+    asl
+    sta TMPNUM
+    lda LAVA_POS
+    and #$0F
+    ora TMPNUM
+
+    sta LAVA_POS
+    ;done storing x
+    rts
 
 ;-------------------------
 LavaLogic:
@@ -1381,6 +1429,7 @@ moveLavaHorizontaly:
     ldy #0
 
     lda LAVA_DIR
+    and #$0F
     cmp #0
     bne moveLavaLeft
     cpx #MAX_LAVA_X
@@ -1404,20 +1453,9 @@ moveLavaLeft:
     beq leftSideReached
 
 storeLavaX:
-    txa
-    asl
-    asl
-    asl
-    asl
-    sta TMPNUM
-    lda LAVA_POS
-    and #$0F
-    ora TMPNUM
-
-    sta LAVA_POS
-    ;done storing x
-
+    jsr StoreLavaPosX
     jmp lavaDelay
+
 leftSideReached:
     dec LAVA_DIR
     jmp lavaDelay
@@ -1615,12 +1653,12 @@ TitleLogic
     sta SCORE_DIGITS_IDX
     sta SCORE_DIGITS_IDX+1
     sta SCORE_DIGITS_IDX+2
+    sta ROOMS_COMPLETED
 
     lda LAVA_COLOR_BEFORE
     sta CURRENT_LAVA_COLOR
 
     jsr EnterNewMap
-
 
     jmp titleNoInput
 
@@ -1712,7 +1750,9 @@ ResetThatGame:
     ldx PLAYER_LIVES
     dex
     stx PLAYER_LIVES
-    cpx #0
+    txa
+    and #$0F
+    cmp #0
     bne enterNew
     jsr ResetTheGame
 there:
@@ -1797,6 +1837,7 @@ continueVBlank:
     lda PLAYERY
     cmp #GOALY
     bcs notReached
+    inc ROOMS_COMPLETED
 enterNew:
     jsr EnterNewMap
 notReached:
