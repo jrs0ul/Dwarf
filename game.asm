@@ -119,6 +119,13 @@ SCREEN_FRAME            ds 1
 LAVA_DIR                ds 1
 PLAYER_LIVES            ds 1
 
+    ORG GAMEMAP3
+LADDERHEIGHT1           ds 1
+LADDERHEIGHT2           ds 1
+LADDERHEIGHT3           ds 1
+LADDERHEIGHT4           ds 1
+LADDERHEIGHT5           ds 1
+
 ;------------------------------------------------------
 ;                  123 | 5 bytes free
 ;------------------------------------------------------
@@ -216,10 +223,12 @@ genloop:
     ora #128
     sta GAMEMAP0,x
     lda #$FF
+
     sta GAMEMAP1,x
     sta GAMEMAP2,x
-    sta GAMEMAP3,x
     sta GAMEMAP4,x
+    lda #$F0
+    sta GAMEMAP3,x
     lda #%01111111
     sta GAMEMAP5,x
     lda #0
@@ -366,10 +375,10 @@ drawPlayfield:
 
     ;enable missile if a map row matches prize Y
 
-    lda #LADDERHEIGHT
-    sbc LINE_IDX ; subtract current map tile line index
-    lsr          ; A / 2
-    lsr          ; A / 2
+    lda #LADDERHEIGHT   ;has nothing to do with ladders, just like this number
+    sbc LINE_IDX        ; subtract current map tile line index
+    lsr                 ; A / 2
+    lsr                 ; A / 2
 
     ;A needs to be 2 for missile to be enabled
     
@@ -451,7 +460,7 @@ drawGame:
     lda #LINESPERCELL   ;2 17
     sta LINE_IDX        ;3 20
 
-    ldy #LADDERHEIGHT   ;2 22
+    ldy #0;LADDERHEIGHT   ;2 22
     sty LADDER_LINE_IDX ;3 25
 
 
@@ -522,7 +531,7 @@ divLoop:
     sta RESP1
     sta HMP1
 
-    lda LADDER1X,x;#LADDERHEIGHT       ;2 7  reset the ladder sprite
+    lda LADDERHEIGHT1,x;#LADDERHEIGHT       ;2 7  reset the ladder sprite
     and #$0F
     tay
     ;---------------------------------------------
@@ -1654,7 +1663,9 @@ loopThroughLadders:
 
     dey
     bpl loopThroughLadders
+
     jmp exitLadderUpdate
+
 playerRowFound:
     dey
     sty TEMPY
@@ -1678,7 +1689,13 @@ ladder_comparePlayerX:
     cmp PLAYERX
     bcc exitLadderUpdate
 
-    ldx LADDER_SPRITE_X_TO_CELL_X,y
+    ldx LADDER_SPRITE_X_TO_CELL_X,y ; get that ladder X
+    
+    ldy TEMPY
+    lda LADDERHEIGHT1,y
+    ora #$0A
+    sta LADDERHEIGHT1,y
+
     jsr RemoveGroundForLadders
 exitLadderUpdate:
     rts
@@ -1795,6 +1812,8 @@ exitPlayPrizeSound:
     rts
 ;------------------------------------------------------
 VBlank:
+    
+    jsr UpdateRandomNumber
 
     lda GAME_STATE
     cmp #0
@@ -2120,8 +2139,8 @@ LADDER_GFX:
     .byte %01000010
     .byte %01111110
     .byte %01000010
-    .byte %01111110
     .byte %01000010
+    .byte %00000000
 
 FINE_ADJUST_BEGIN:      ;HMPx sprite movement lookup table
     .byte %01110000; Left 7 
