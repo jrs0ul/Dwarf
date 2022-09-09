@@ -272,22 +272,24 @@ lastRowCheck:
     bcs ladderLoop
 
 compareToPrev:
+;    cmp TMPNUM1
+;    bcs XIsBiggerOrEqual        ; this X is bigger or equal
+
+;    lda TMPNUM1                 ; this X is smaller than previous
+;    stx TMPNUM1
+;    sec
+;    sbc TMPNUM1
+;    jmp compareResult
+;XIsBiggerOrEqual:
+;    sec
+;    sbc TMPNUM1
+
+;compareResult:
+;    cmp #MIN_X_DISTANCE_BETWEEN_LADDERS
+;    bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
     cmp TMPNUM1
-    bcs XIsBiggerOrEqual        ; this X is bigger or equal
-
-    lda TMPNUM1                 ; this X is smaller than previous
+    beq ladderLoop
     stx TMPNUM1
-    sec
-    sbc TMPNUM1
-    jmp compareResult
-XIsBiggerOrEqual:
-    sec
-    sbc TMPNUM1
-
-compareResult:
-    stx TMPNUM1
-    cmp #MIN_X_DISTANCE_BETWEEN_LADDERS
-    bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
 
     cpx TEMP_X_INDEX            ;compare ladder x with prize x
     beq checkIfLadderYIsTheSame
@@ -530,10 +532,12 @@ divLoop:
 
     sta RESP1
     sta HMP1
-
-    lda LADDERHEIGHT1,x;#LADDERHEIGHT       ;2 7  reset the ladder sprite
-    and #$0F
-    tay
+    ;---------
+    sta WSYNC
+    ;---------
+    lda LADDERHEIGHT1,x;    ;4 7  reset the ladder sprite
+    and #$0F                ;2
+    tay                     ;2
     ;---------------------------------------------
     sta WSYNC
     ;---------------------------------------------
@@ -1668,6 +1672,7 @@ loopThroughLadders:
 
 playerRowFound:
     dey
+    bmi exitLadderUpdate
     sty TEMPY
     lda LADDER1X,y
     tay
