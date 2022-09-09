@@ -462,19 +462,13 @@ drawGame:
     lda #LINESPERCELL   ;2 17
     sta LINE_IDX        ;3 20
 
-    ldy #0;LADDERHEIGHT   ;2 22
+    ldy #0              ;2 22
     sty LADDER_LINE_IDX ;3 25
-
-
-    lda #GROUND_COLOR   ;2 27
-    sta COLUPF          ;3 30
 
     lda PLAYER_FLIP     ;3 33
     sta REFP0           ;3 36
 
-
     ldx #54             ;2 38 scanlines, max scanlines / 3
-
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
@@ -491,8 +485,8 @@ drawThePlayer:
     cpx PLAYERY             ;3 45   can we draw the player sprite?
     bcs nope                ;2 47   < PLAYERY
 
-    ;lda PLAYERCOLORS,y      ;4 51    sets the player colors
-    ;sta COLUP0              ;3 54
+    lda PLAYERCOLORS,y      ;4 51    sets the player colors
+    sta COLUP0              ;3 54
     lda (PLAYERPTR),y       ;5 59    let's load a line from a sprite frame
     sta GRP0                ;3 62    and store it to the Player0 sprite
     dec TMPNUM1             ;5 67
@@ -609,64 +603,71 @@ endofKernel:
 ;--------------------------------------------------------------
 DrawScore:
 
-    lda #0
-    sta GRP0
-    sta GRP1
-    sta REFP0           ;3  turn off mirroring
-    sta REFP1
-
-    lda #%00000011      ;2
-    sta NUSIZ0          ;3
-    sta NUSIZ1          ;3
-
-
     sta WSYNC           ;let's draw an empty line
-    SLEEP 22
-    sta RESP0           ;2 reset sprite pos
-    sta RESP1
+    sta HMOVE           ;3 3
+    lda #0              ;2 5
+    sta GRP0            ;3 8
+    sta GRP1            ;3 11
+    sta REFP0           ;3 14     turn off mirroring
+    sta REFP1           ;3 17
 
-    sta HMCLR
-    lda #$10           ;2  move p2 sprite left a bit
-    sta HMP1           ;3
+    SLEEP 17            ;17 34
+    lda #$11            ;2  36    move p2 sprite left a bit
+
+    ;had to push cpu cycles to 36 instead of 20 to center the score
+
+    sta RESP0           ;3 39 reset sprite pos
+    sta RESP1           ;3 42
+    sta HMP1            ;3 45
 
 
-    lda SCORE_COLOR     ;2
-    sta COLUP1          ;3 
-    sta COLUP0          ;3 
+    lda SCORE_COLOR     ;2 47
+    sta COLUP1          ;3 50
+    sta COLUP0          ;3 53
 
     sta WSYNC
-    sta HMOVE
-    SLEEP 45
-    ldy #PLAYERHEIGHT - 1
-    sty TEMP_X_INDEX
+    sta HMOVE               ;3 3
+    SLEEP 27                ;27 30
+    lda #%00000011          ;2 32
+    sta NUSIZ0              ;3 35
+    sta NUSIZ1              ;3 38
+    sta VDELP0              ;3 41
+    sta VDELP1              ;3 44
+    ldy PLAYERHEIGHT - 1    ;2 46
+    sty TEMP_X_INDEX        ;3 49
+    sta HMCLR               ;3 51
 
 score_line_loop:
 
-    ldy TEMP_X_INDEX        ;3 50
-
-    lda (SCORE_PTR+10),y    ;5 55
-    sta GRP0                ;3 58
-    lda (SCORE_PTR+8),y     ;5 63
-    sta GRP1                ;3 66
-
+    lda (SCORE_PTR+2),y     ;5 56
+    tax                     ;2 58
+    lda (SCORE_PTR),y       ;5 63
     sta WSYNC
-    ;--------------------
-    lda (SCORE_PTR+6),y     ;5 5
-    sta GRP0                ;3 8
-    lda (SCORE_PTR),y       ;5 13
-    sta TMPNUM              ;3 16
-    lda (SCORE_PTR+2),y     ;5 21 
-    tax                     ;2 23
-    lda (SCORE_PTR+4),y     ;5 28
-    ldy TMPNUM              ;3 31 for some reason this has to be 27, otherwise it doesn't work :-/
+    sta HMOVE               ;3 3
+    sty TEMP_X_INDEX        ;3 6
+    sta TMPNUM              ;3 9
+    lda (SCORE_PTR+10),y    ;5 14
+    sta GRP0                ;3 17
+    lda (SCORE_PTR+8),y     ;5 22 
+    sta GRP1                ;3 25
+    lda (SCORE_PTR+6),y     ;5 30
+    sta GRP0                ;3 33
 
-    sta GRP1                ;3 34
-    stx GRP0                ;3 37 fifth
-    sty GRP1                ;3 40 last digit, sixth
-    sta GRP0                ;3 43
+    lda (SCORE_PTR+4),y     ;5 38
+    ldy TMPNUM              ;3 41 for some reason this has to be 27, otherwise it doesn't work :-/
 
-    dec TEMP_X_INDEX        ;5 48
-    bpl score_line_loop     ;2 50
+    sta GRP1                ;3 44
+    stx GRP0                ;3 47 fifth
+    sty GRP1                ;3 50 last digit, sixth
+    sta GRP0                ;3 53
+
+    ldy TEMP_X_INDEX        ;
+    dey                     ;
+    bpl score_line_loop     ;2 
+
+    lda #0
+    sta VDELP0              ;
+    sta VDELP1              ;
 
 
     rts
@@ -677,9 +678,9 @@ TitleScreen:
 
     sta WSYNC
 
-    lda #20
+    lda #15 ;15 * 8 = 120
     sta TMPNUM
-    ldy #5
+    ldy #7
 titleLoop:
     
     sta WSYNC               ;finish the scanline
@@ -717,7 +718,7 @@ titleLoop:
     beq decreaseIdx
     jmp titleLoop
 decreaseIdx:
-    lda #20
+    lda #15
     sta TMPNUM
     dey
 
@@ -738,7 +739,7 @@ emptyLoop:
 
     jsr DrawScore
 
-    ldx #36
+    ldx #36 ;remaining scanlines
 emptyLoop1:
     sta WSYNC
     dex
@@ -1741,14 +1742,8 @@ titleButtonNotPressed:
 titleNoInput:
 
     ldx TMPNUM1
-    dex
-    bmi resetTmpNum
-    jmp saveTmpNum
-resetTmpNum:
-    ldx #68
-saveTmpNum:
+    inx
     stx TMPNUM1
-
 
     jsr UpdateSpriteFrames
 
@@ -2329,9 +2324,13 @@ TITLE0
     .byte %10000000
     .byte %10000000
     .byte %10000000
+    .byte %10000000
+    .byte %10000000
 TITLE1
     .byte %11100001
     .byte %00010010
+    .byte %00001010
+    .byte %00001010
     .byte %00001010
     .byte %00001010
     .byte %00010010
@@ -2340,24 +2339,32 @@ TITLE2
     .byte %10011001
     .byte %10100110
     .byte %10100110
+    .byte %10100110
+    .byte %10100000
     .byte %10100000
     .byte %10100000
     .byte %00100000
 TITLE3
     .byte %00000000
     .byte %00000000
+    .byte %00000000
     .byte %11110000
+    .byte %00000000
     .byte %00000000
     .byte %00000000
     .byte %11110000
 TITLE4
-    .byte %10100110
+    .byte %10100010
+    .byte %10100100
     .byte %10101000
     .byte %10111110
     .byte %10100001
     .byte %10100001
+    .byte %10100001
     .byte %00111110
 TITLE5
+    .byte %00000010
+    .byte %00000010
     .byte %00000010
     .byte %00000010
     .byte %00011110
