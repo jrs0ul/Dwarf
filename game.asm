@@ -8,6 +8,7 @@ MAPWIDTH                         = 12
 PLAYERHEIGHT                     = 9
 LADDERHEIGHT                     = 11
 LINESPERCELL                     = 9
+MAP_CELL_WIDTH                   = 12
 DIGITS_PTR_COUNT                 = 12
 X_OFFSET_TO_RIGHT_FOR_MINING     = 7
 MIN_PLAYER_Y                     = 9
@@ -37,6 +38,7 @@ LAVA_COLOR_BEFORE                = $34
 LAVA_COLOR_AFTER                 = $14
 
 SCORE_FOR_PRIZE                  = 10
+SCORE_FOR_BRICK                  = 2
 MIN_DISTANCE_FROM_PRIZE          = 18
 
 DEATH_INTERVAL                   = 64
@@ -89,17 +91,27 @@ PLAYERPTR               ds 2  ;16bit address of the active sprites's frame graph
 PLAYER_FRAME            ds 1  ;frame index
 
 PRIZE_SOUND_INTERVAL    ds 1
-GAME_OVER_TIMER         ds 1
+DEATH_SOUND_INTERVAL    ds 1
 CURRENT_LAVA_COLOR      ds 1
-PRIZEX                  ds 1
-PRIZEY                  ds 1
+PRIZEX                  ds 1    ;hidden prize's location
 CURRENT_PRIZE_Y         ds 1
 
 ROOMS_COMPLETED         ds 1
 
 GAME_STATE              ds 1
 
-SCORE_DIGITS_IDX        ds 3                 ;indexes of highscore digits, 4 bits - one digit
+SCORE_DIGITS_IDX        ds 3   ;indexes of highscore digits, 4 bits - one digit
+BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
+GENERATING              ds 1   ;Is the map being generared at the moment?
+SCREEN_FRAME            ds 1
+
+TEMPVARS                ds 6
+
+SCORE_PTR               ds DIGITS_PTR_COUNT  ; pointers to digit graphics
+;----------------------- 
+; Overlays
+;
+    ORG TEMPVARS
 TMPNUM                  ds 1
 TMPNUM1                 ds 1
 TEMPY                   ds 1
@@ -108,18 +120,14 @@ TEMP_X_INDEX            ds 1  ; Temp variable used in drawing, and in input chec
 LADDER_LINE_IDX         ds 1
 LINE_IDX                ds 1  ; line counter for a map cell
 
-SCORE_PTR               ds DIGITS_PTR_COUNT  ; pointers to digit graphics
-BUTTON_PRESSED          ds 1   ;Is joystick button being pressed right now?
-GENERATING              ds 1   ;Is the map being generared at the moment?
-SCREEN_FRAME            ds 1
-
 ;reusing gamemap0's empty 4 bits
     ORG GAMEMAP0
-
+;4 bit variables (max 16 values)
 LAVA_DIR                ds 1
 PLAYER_LIVES            ds 1
+PRIZEY                  ds 1  ;randomly generated row number where the prize is located (1..4)
 
-    ORG GAMEMAP3
+    ORG GAMEMAP3                ;these are used to hide ladders, 0 height - ladder is hidden, non zero, we're going to draw that amount of lines
 LADDERHEIGHT1           ds 1
 LADDERHEIGHT2           ds 1
 LADDERHEIGHT3           ds 1
@@ -239,7 +247,7 @@ genloop:
     sta LAVAMAP4,x
     sta LAVAMAP5,x
     inx 
-    cpx #6
+    cpx #MAPHEIGHT
     bne genloop
 
     ldx #5
@@ -296,6 +304,7 @@ compareToPrev:
     jmp saveLadderPostionToRam
 checkIfLadderYIsTheSame:
     lda PRIZEY
+    and #$0F
     cmp TEMPY
     beq ladderLoop              ;generate ladder one more time
 
@@ -654,11 +663,11 @@ score_line_loop:
     sta GRP0                ;3 33
 
     lda (SCORE_PTR+4),y     ;5 38
-    ldy TMPNUM              ;3 41 for some reason this has to be 27, otherwise it doesn't work :-/
+    ldy TMPNUM              ;3 41 
 
     sta GRP1                ;3 44
-    stx GRP0                ;3 47 fifth
-    sty GRP1                ;3 50 last digit, sixth
+    stx GRP0                ;3 47
+    sty GRP1                ;3 50 
     sta GRP0                ;3 53
 
     ldy TEMP_X_INDEX        ;
@@ -755,7 +764,7 @@ Overscan:
     sta WSYNC
     lda #2
     sta VBLANK
-    lda #35
+    lda #34
     sta TIM64T
 
     ;some game logic here
@@ -765,8 +774,8 @@ Overscan:
     beq notColliding
 
     ;----------
-    lda GAME_OVER_TIMER
-    bne notColliding
+    lda DEATH_SOUND_INTERVAL
+    bne notColliding        ;if the character dies
 
     ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
@@ -795,7 +804,7 @@ checkCellCollision:
     ldx #0
 divx:
     inx
-    sbc #12
+    sbc #MAP_CELL_WIDTH
     bcs divx
     dex ;playerX / 12 - 1
 
@@ -821,7 +830,7 @@ doneDividing:
 
     jsr Mine
 
-    lda #1
+    lda #SCORE_FOR_BRICK
     ldx #0
     ldy #0
     jsr IncrementScore
@@ -892,7 +901,7 @@ prepareDivide:
 dividing_x:
     inx
     sec
-    sbc #12
+    sbc #MAP_CELL_WIDTH
     bcs dividing_x
     dex
     cpx #MAPWIDTH
@@ -948,10 +957,10 @@ CalcLavaCollision:
     bcc lava_divx ;the result is less than PLAYERX
     lda #0        ;since the negative value would be bigger
 lava_divx:
-    cmp #12
+    cmp #MAP_CELL_WIDTH
     bcc lava_doneDividingX
     sec
-    sbc #12
+    sbc #MAP_CELL_WIDTH
     inx
     jmp lava_divx
 lava_doneDividingX:
@@ -973,10 +982,10 @@ lava_storeX:
     clc
     adc #4
 lava_divx_2:
-    cmp #12
+    cmp #MAP_CELL_WIDTH
     bcc lava_doneDividingX_2
     sec
-    sbc #12
+    sbc #MAP_CELL_WIDTH
     inx
     jmp lava_divx_2
 lava_doneDividingX_2:
@@ -1068,7 +1077,7 @@ lava_onlyOneSegmentUsed_2:
 
 PlayerDies:
     lda #DEATH_INTERVAL
-    sta GAME_OVER_TIMER
+    sta DEATH_SOUND_INTERVAL
 
 notCollidingWithLava:
 
@@ -1647,6 +1656,7 @@ comparePlayerX:
     cmp PLAYERX
     bcc hidePrize
     lda PRIZEY
+    and #$0F
     jmp contUpdateX
 hidePrize:
     lda #255
@@ -1827,7 +1837,7 @@ GameLogic:
     jmp there
 ResetThatGame:
     ldx #0
-    stx GAME_OVER_TIMER
+    stx DEATH_SOUND_INTERVAL
     stx AUDV1
     ldx PLAYER_LIVES
     dex
@@ -1846,7 +1856,7 @@ there:
     
     jsr AnimateLavaColor
 
-    lda GAME_OVER_TIMER
+    lda DEATH_SOUND_INTERVAL
     beq noGameOver
     tax
     dex
@@ -1854,7 +1864,7 @@ there:
     sta AUDC1
     lda #DEATH_INTERVAL
     sec
-    sbc GAME_OVER_TIMER
+    sbc DEATH_SOUND_INTERVAL
     lsr
     sta AUDF1
     lda #14
@@ -1862,7 +1872,7 @@ there:
 continueGameOver:
     cpx #0
     beq ResetThatGame
-    stx GAME_OVER_TIMER
+    stx DEATH_SOUND_INTERVAL
     jmp updatePlayerSpriteX
 
 noGameOver:
@@ -1897,7 +1907,7 @@ updatePlayerSpriteX:
     ldy SCREEN_FRAME
     iny
     cpy #2
-    bne continueVBlank
+    bcc continueVBlank
     ldy #0
 continueVBlank:
     sty SCREEN_FRAME
