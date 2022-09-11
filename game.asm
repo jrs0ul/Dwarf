@@ -17,13 +17,12 @@ MAX_PLAYER_X                     = 140
 MAX_PLAYER_LIVES                 = 3
 
 LAVA_START_POS                   = $05 ; x=0; y=5
-INITIAL_LAVA_SLEEP               = 10
-LAVA_SLEEP_AFTER_PRIZE           = 10
-INITIAL_LAVA_DELAY               = 30
+INITIAL_LAVA_SLEEP               = 8
+LAVA_SLEEP_AFTER_PRIZE           = 11
+INITIAL_LAVA_DELAY               = 27
 MINIMUM_LAVA_DELAY               = 8
 MAX_LAVA_X                       = 11
 
-MIN_X_DISTANCE_BETWEEN_LADDERS   = 3
 
 ;Main goal
 GOALX                            = 130
@@ -126,6 +125,7 @@ LINE_IDX                ds 1  ; line counter for a map cell
 LAVA_DIR                ds 1
 PLAYER_LIVES            ds 1
 PRIZEY                  ds 1  ;randomly generated row number where the prize is located (1..4)
+LAVA_ACCEL              ds 1  ;timer for lava acceleration
 
     ORG GAMEMAP3                ;these are used to hide ladders, 0 height - ladder is hidden, non zero, we're going to draw that amount of lines
 LADDERHEIGHT1           ds 1
@@ -158,9 +158,6 @@ Reset:
     sta COLUBK  ;black background everywhere
 
     sta GAME_STATE
-
-
-
 
 Main:
     jsr Vsync
@@ -756,7 +753,41 @@ emptyLoop1:
 
 
     rts
+;-------------------------------------------------
+;TMPNUM1 - hundreds and thousands
+;TEMPY - tens and hundreds of thousands
+CheckScoreForBonuses:
+    lda TMPNUM1
+    and #$0F
+    sta TMPNUM
 
+    lda SCORE_DIGITS_IDX+1
+    and #$0F
+    
+    cmp TMPNUM
+    bne scoreHasChanged
+    jmp noBonuses
+scoreHasChanged:
+    cmp #5      ;500,1500,2500 etc.
+    beq addLife
+    jmp noBonuses
+addLife:
+    lda PLAYER_LIVES
+    and #$0F
+    tax
+    inx
+    cpx #3  ;max lives
+    bcs noBonuses
+    ;save lives to ram
+    stx TMPNUM
+    lda PLAYER_LIVES
+    and #$F0
+    ora TMPNUM
+    sta PLAYER_LIVES
+    lda #32
+    sta PRIZE_SOUND_INTERVAL
+noBonuses:
+    rts
 
 ;---------------------------------------------------------------
 
@@ -830,10 +861,15 @@ doneDividing:
 
     jsr Mine
 
+    lda SCORE_DIGITS_IDX+1
+    sta TMPNUM1
+    lda SCORE_DIGITS_IDX+2
+    sta TEMPY
     lda #SCORE_FOR_BRICK
     ldx #0
     ldy #0
     jsr IncrementScore
+    jsr CheckScoreForBonuses
 
 doneMining:
 
@@ -869,10 +905,16 @@ hideDemPrize:
     sta PRIZE_SOUND_INTERVAL
     lda #LAVA_SLEEP_AFTER_PRIZE
     sta LAVA_SLEEP          ;freeze lava
+    ;--
+    lda SCORE_DIGITS_IDX+1
+    sta TMPNUM1
+    lda SCORE_DIGITS_IDX+2
+    sta TEMPY
     lda #SCORE_FOR_PRIZE
     ldy #0
     ldx #0
     jsr IncrementScore
+    jsr CheckScoreForBonuses
 
 checkLadderCollision:
     jsr LadderCollision
@@ -916,7 +958,8 @@ exitLadderCollision:
 
     rts
 ;-----------------------------
-Mine
+;TEMPY is row y
+Mine:
     ldx TMPNUM
 
     lda MAP_3CELLS_LOOKUP,x
@@ -1408,7 +1451,31 @@ StoreLavaPosX
     sta LAVA_POS
     ;done storing x
     rts
-
+;-------------------------
+AccelerateLava:
+    lda LAVA_ACCEL
+    and #$0F
+    tax
+    inx
+    cpx #2
+    stx TMPNUM
+    lda LAVA_ACCEL
+    and #$F0
+    ora TMPNUM
+    sta LAVA_ACCEL
+    bcs reduce_delay
+    jmp exitAcceleration
+reduce_delay:
+    lda LAVA_ACCEL
+    and #$F0
+    sta LAVA_ACCEL
+    ldx LAVA_DELAY
+    dex
+    cpx #MINIMUM_LAVA_DELAY
+    bcc exitAcceleration
+    stx LAVA_DELAY
+exitAcceleration:
+    rts
 ;-------------------------
 LavaLogic:
 
@@ -1437,13 +1504,7 @@ lavaSlumber:
 
 
 moveTheLava:
-
-    ldx LAVA_DELAY
-    dex
-    cpx #MINIMUM_LAVA_DELAY
-    bcc skipSmallerThanMinimumDelay
-    stx LAVA_DELAY
-skipSmallerThanMinimumDelay:
+    jsr AccelerateLava
 
     jsr FillInLavaTile
 ;----
@@ -1633,16 +1694,17 @@ UpdatePrize:
     cmp #255
     bne dontUpdatePrize
 
-    ldy PRIZEY
-
+    lda PRIZEY
+    and #$0F        ;prizey is lower 4 bits
+    tay
     lda Y_POSITIONS_WHERE_YOU_CAN_MINE,y
-    cmp PLAYERY
-    bne hidePrize
+    cmp PLAYERY     ;is player at the same level as the prize?
+    bne hidePrize   ;hide prize if not
 
-    lda PRIZEX
+    lda PRIZEX      ;procceed to compare prize's x coord
     sec
     sbc #MIN_DISTANCE_FROM_PRIZE
-    
+
     bmi negativeX
     jmp comparePlayerX
 negativeX:
@@ -1667,6 +1729,7 @@ dontUpdatePrize:
 
     rts
 ;------------------------------------------------------
+;Make the ladders appear when the player is above them
 UpdateLadders:
 
     ldy #5
