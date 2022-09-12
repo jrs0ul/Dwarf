@@ -133,6 +133,8 @@ LADDERHEIGHT2           ds 1
 LADDERHEIGHT3           ds 1
 LADDERHEIGHT4           ds 1
 LADDERHEIGHT5           ds 1
+    ORG LAVAMAP0
+CURRENT_LADDER_Y        ds 1
 
 ;------------------------------------------------------
 ;                  123 | 5 bytes free
@@ -399,8 +401,8 @@ enableMissile:
     ;---------------------------------------------
     sta WSYNC               ;finish the scanline
     ;---------------------------------------------
-
-    sta HMCLR               ;3 3  ; this resets the horizontal movement for the player sprite, placed it here instead nop
+    nop
+    nop
     sta ENAM0               ;3 6  ; enables or disables missile depending on A
 
     lda CURRENT_LAVA_COLOR  ;3 9
@@ -478,28 +480,30 @@ drawGame:
 
 KERNEL_LOOP:
     ;------------------------------------------------------------------------
-    lda LADDER_GFX,y        ;4 29
-    sta GRP1                ;3 32
-    dey                     ;2 34
-    sty LADDER_LINE_IDX     ;3 37
+    cpx PLAYERY             ;3 13
+    bcs drawThePlayer       ;3 16
+    lda LADDER_GFX,y        ;4 20
+    sta GRP1                ;3 23
+    dey                     ;2 25
+    sty LADDER_LINE_IDX     ;3 28
 
 
 drawThePlayer:
 
-    ldy TMPNUM1             ;3 40
-    beq nope                ;2 42   PLAYER_LINE_IDX == 0
-    cpx PLAYERY             ;3 45   can we draw the player sprite?
-    bcs nope                ;2 47   < PLAYERY
+    ldy TMPNUM1             ;3 31
+    beq nope                ;2 33   PLAYER_LINE_IDX == 0
+    cpx PLAYERY             ;3 36   can we draw the player sprite?
+    bcs nope                ;3 39   < PLAYERY
 
-    lda PLAYERCOLORS,y      ;4 51    sets the player colors
-    sta COLUP0              ;3 54
-    lda (PLAYERPTR),y       ;5 59    let's load a line from a sprite frame
-    sta GRP0                ;3 62    and store it to the Player0 sprite
-    dec TMPNUM1             ;5 67
+    lda PLAYERCOLORS,y      ;4 43    sets the player colors
+    sta COLUP0              ;3 47
+    lda (PLAYERPTR),y       ;5 53    let's load a line from a sprite frame
+    sta GRP0                ;3 56    and store it to the Player0 sprite
+    dec TMPNUM1             ;5 61
 nope:
-    ldy LADDER_LINE_IDX     ;3 70
+    ldy LADDER_LINE_IDX     ;3 64
 
-    lda #GROUND_COLOR       ;2 72
+    lda #GROUND_COLOR       ;2 66
 
     ;----------------------------------------------------------------
 
@@ -521,37 +525,22 @@ exitDrawPlayfield:
     bne cont                ;2 5  not all lines for a cell have been drawn, continue
 
     ldx TEMPY               ;3 8  load ladder index
-    lda LADDER1X,x          ;4 12
-    sec                     ;2 14
-divLoop:
-    sbc #15                 ;2 16
-    bcs divLoop             ;3 19
-
-    tay                     ;2 21
-    lda FINE_ADJUST_TABLE,y ;4 25
-
-    sta RESP1
-    sta HMP1
-    ;---------
-    sta WSYNC
-    ;---------
-    lda LADDERHEIGHT1,x;    ;4 7  reset the ladder sprite
-    and #$0F                ;2
-    tay                     ;2
+    lda LADDERHEIGHT1,x     ;4 12  reset the ladder sprite
+    and #$0F                ;2 14
+    tay                     ;2 16
+    dec TEMPY               ;5 21   let's position next ladder, decrease ladder index
+    dec TMPNUM              ;5 26   move to next map cell
+    ldx #LINESPERCELL       ;2 28   reset line count
     ;---------------------------------------------
     sta WSYNC
     ;---------------------------------------------
-    sta HMOVE               ;3 3
-    dec TEMPY               ;5 8    let's position next ladder, decrease ladder index
-    dec TMPNUM              ;5 13   move to next map cell
-    ldx #LINESPERCELL       ;2 15   reset line count
 cont:
-    stx LINE_IDX            ;3 18 save current line count
-    ldx TEMP_X_INDEX        ;3 21 restore X (scanline index)
+    stx LINE_IDX            ;3 3 save current line count
+    ldx TEMP_X_INDEX        ;3 6 restore X (scanline index)
 
     ;---------------------------------------------
-    dex                     ;2 23
-    bne KERNEL_LOOP ;       ;2 25
+    dex                     ;2 8
+    bne KERNEL_LOOP ;       ;2 10
     ;==================================================
 doneDrawing:
 
@@ -610,12 +599,12 @@ endofKernel:
 DrawScore:
 
     sta WSYNC           ;let's draw an empty line
-    sta HMOVE           ;3 3
     lda #0              ;2 5
     sta GRP0            ;3 8
     sta GRP1            ;3 11
     sta REFP0           ;3 14     turn off mirroring
     sta REFP1           ;3 17
+    sta HMCLR
 
     SLEEP 17            ;17 34
     lda #$11            ;2  36    move p2 sprite left a bit
@@ -1768,15 +1757,29 @@ ladder_comparePlayerX:
     cmp PLAYERX
     bcc exitLadderUpdate
 
+    dey
+    dey
+
     ldx LADDER_SPRITE_X_TO_CELL_X,y ; get that ladder X
     
     ldy TEMPY
+    lda CURRENT_LADDER_Y
+    and #$F0
+    ora TEMPY
+    sta CURRENT_LADDER_Y
     lda LADDERHEIGHT1,y
     ora #$0A
     sta LADDERHEIGHT1,y
-
     jsr RemoveGroundForLadders
+    lda LADDER_X_POSSITIONS,x
+    jmp realyExit
 exitLadderUpdate:
+    lda CURRENT_LADDER_Y
+    and #$0F
+    tay
+    lda LADDER1X,y
+    
+realyExit:
     rts
 ;------------------------------------------------------
 TitleLogic
@@ -1956,6 +1959,9 @@ updatePlayerSpriteX:
 
     jsr UpdatePrize
     jsr UpdateLadders
+
+    ldx #1
+    jsr SetSpriteXPos
 
     lda PLAYERX
     ldx #0
@@ -2205,13 +2211,13 @@ LADDER_GFX:
     .byte %00000000
     .byte %00000000
     .byte %00000000
+    .byte %00000000
     .byte %01000010
     .byte %01111110
     .byte %01000010
     .byte %01111110
     .byte %01000010
     .byte %01111110
-    .byte %01000010
     .byte %01000010
     .byte %00000000
 
@@ -2235,18 +2241,18 @@ FINE_ADJUST_BEGIN:      ;HMPx sprite movement lookup table
 FINE_ADJUST_TABLE EQU FINE_ADJUST_BEGIN - %11110001; %11110001 = -15
 
 LADDER_X_POSSITIONS: ;x positions for ladder sprites based on the location in the map row
-    .byte 0
-    .byte 12
-    .byte 24
-    .byte 36
-    .byte 48
-    .byte 60
-    .byte 72
-    .byte 84
-    .byte 96
-    .byte 108
-    .byte 120
-    .byte 132
+    .byte 2
+    .byte 14
+    .byte 26
+    .byte 38
+    .byte 50
+    .byte 62
+    .byte 74
+    .byte 86
+    .byte 98
+    .byte 110
+    .byte 122
+    .byte 134
 
 MAP_3CELLS_INTERSECTIONS: ;In how many playfield segments a map tile resides
     .byte 2 ;0
@@ -2579,6 +2585,21 @@ LADDER_SPRITE_X_TO_CELL_X
     .byte 0
     .byte 0
     .byte 11
+
+LADDER_GFX_1:
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %00000010
+    .byte %00101110
+    .byte %01000010
+    .byte %00111110
+    .byte %01000010
+    .byte %01101110
+    .byte %01000010
+    .byte %00000000
+
 
     ;87 bytes used of 256
 
