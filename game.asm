@@ -14,7 +14,8 @@ X_OFFSET_TO_RIGHT_FOR_MINING     = 7
 MIN_PLAYER_Y                     = 9
 MAX_PLAYER_Y                     = 54
 MAX_PLAYER_X                     = 140
-MAX_PLAYER_LIVES                 = 3
+INITIAL_PLAYER_LIVES             = 3
+MAX_PLAYER_LIVES                 = 7
 
 LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 8
@@ -546,52 +547,72 @@ doneDrawing:
 
     jsr DrawScore
 
-    lda #0
-    sta GRP0
-    sta GRP1
-    sta GRP0
-    sta GRP1
-    lda PLAYER_LIVES ;3 2
-
     sta WSYNC   ;let's draw an empty line
-    sta HMOVE
+    lda #0          ;2 2
+    sta GRP0        ;3 5
+    sta GRP1        ;3 8
+    sta GRP0        ;3 11
+    sta GRP1        ;3 14
+    sta HMCLR       ;3 17
 
-    and #$0F
-    tay
-    lda LIVES_LOOKUP,y
-    sta NUSIZ0       ;3 5
 
-    lda #LIVES_BG  ;2 10
-    sta COLUBK     ;3 13
-    lda #0         ;2 15
+    lda #0          ;2 27
+
+    SLEEP 17
 
     sta RESP0      ;2 reset sprite pos
+    sta RESP1      ;2 reset sprite pos
 
-    lda #$0        ;2
+    lda #%11110000 ;2 -1
     sta HMP0       ;3  reset p1 x offset
+    lda #0         ;2
+    sta HMP1       ;3  reset p1 x offset
 
+    sta WSYNC   ;let's draw an empty line
+    sta HMOVE       ;3 3
+    lda PLAYER_LIVES
+    and #$0F
+    tax
+    lda LIVES_LOOKUP,x;2 5
+    sta NUSIZ0      ;3 8
+    sta NUSIZ1      ;3 11
+    lda #LIVES_BG   ;2 13
+    sta COLUBK      ;3 16
 
+    sta HMCLR       ;3    let's clear HM
     ldy #PLAYERHEIGHT
 
 lives_bar_loop:
 
     sta WSYNC
-    sta HMOVE
-    lda PLAYER_LIVES
-    and #$0F
-    cmp #1
-    beq no_life
-    lda DWARF_GFX_3,y
-    sta GRP0
+    sta HMOVE           ;3 3
+    cpx #2
+    bcc continueLives2
+    lda DWARF_GFX_0,y   ;4 7
+    sta GRP0            ;3 10
+    cpx #3
+    bcc continueLives2
+    sta GRP1            ;3 17
 
-    jmp next_live_line
-no_life:
+    cpx #6
+    bne continueLives
+    ;6 lives
+    SLEEP 22
     lda #0
-    sta GRP0
-next_live_line:
-    sta HMCLR   ; let's clear HM
-    dey
-    bne lives_bar_loop
+    sta GRP1
+continueLives:
+    cpx #4
+    bne continueLives2
+    ;4 lives
+    SLEEP 12
+    lda #0
+    sta GRP1
+
+continueLives2:
+
+    dey                 ;2 35
+    bne lives_bar_loop  ;3
+
 endofKernel:
 
     rts
@@ -656,13 +677,13 @@ score_line_loop:
     sty GRP1                ;3 50 
     sta GRP0                ;3 53
 
-    ldy TEMP_X_INDEX        ;
-    dey                     ;
+    ldy TEMP_X_INDEX        ;3
+    dey                     ;2
     bpl score_line_loop     ;2 
 
-    lda #0
-    sta VDELP0              ;
-    sta VDELP1              ;
+    lda #0                  ;2
+    sta VDELP0              ;3
+    sta VDELP1              ;3
 
 
     rts
@@ -765,7 +786,7 @@ addLife:
     and #$0F
     tax
     inx
-    cpx #3  ;max lives
+    cpx #MAX_PLAYER_LIVES  ;max lives
     bcs noBonuses
     ;save lives to ram
     stx TMPNUM
@@ -1796,7 +1817,7 @@ TitleLogic
     
     lda #1
     sta GAME_STATE
-    lda #MAX_PLAYER_LIVES
+    lda #INITIAL_PLAYER_LIVES
     sta PLAYER_LIVES
     lda #0
     sta SCORE_DIGITS_IDX
@@ -2310,11 +2331,15 @@ MAP_CLEAR_PATTERN_BY_X_SEG2:    ;some cell columns(only 3) go through two playfi
     .byte %00000000 ;10
     .byte %00000000 ;11
 
-LIVES_LOOKUP
+LIVES_LOOKUP:
     .byte 0 ;0 lives
     .byte 0 ;1 life
     .byte 0 ;2 lives
-    .byte 1 ;3 lives
+    .byte 0 ;3 lives
+    .byte 1 ;4 lives
+    .byte 1 ;5 lives
+    .byte 3 ;6 lives
+    .byte 3 ;7 lives
 
     ORG $FCF3 ; next data page
 
