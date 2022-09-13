@@ -39,6 +39,7 @@ LAVA_COLOR_AFTER                 = $14
 
 SCORE_FOR_PRIZE                  = 10
 SCORE_FOR_BRICK                  = 2
+SCORE_FOR_LAVA                   = 10
 MIN_DISTANCE_FROM_PRIZE          = 18
 
 DEATH_INTERVAL                   = 64
@@ -823,10 +824,13 @@ Overscan:
     bpl notColliding
     ;so the player is colliding with the playfield
 
+
+    lda LAVA_SLEEP
+    bne dealWithMining
     ;let's check if the player collides with the lava
     jsr CalcLavaCollision
 
-
+dealWithMining:
     lda PLAYER_FRAME
     cmp #%00011111
     bne notMining
@@ -875,7 +879,7 @@ doneDividing:
     sta TMPNUM1
     lda SCORE_DIGITS_IDX+2
     sta TEMPY
-    lda #SCORE_FOR_BRICK
+    lda TEMP_X_INDEX ;score is stored here
     ldx #0
     ldy #0
     jsr IncrementScore
@@ -973,6 +977,9 @@ exitLadderCollision:
 ;-----------------------------
 ;TEMPY is row y
 Mine:
+    lda #0
+    sta TEMP_X_INDEX
+
     ldx TMPNUM
 
     lda MAP_3CELLS_LOOKUP,x
@@ -988,17 +995,44 @@ Mine:
     ;Let's change the second segment
 
     lda GAMEMAP0,y + MAPHEIGHT
-    ldx TMPNUM              ;load x coord
     and MAP_CLEAR_PATTERN_BY_X_SEG2,x
     sta GAMEMAP0,y + MAPHEIGHT
+
+
+    lda LAVA_SLEEP
+    beq mine_onlyOneSegmentUsed
+    lda LAVAMAP0,y + MAPHEIGHT
+    and MAP_CLEAR_PATTERN_BY_X_SEG2,x
+    sta LAVAMAP0,y + MAPHEIGHT
 
 
 mine_onlyOneSegmentUsed:
 
     lda GAMEMAP0,y
-    ldx TMPNUM
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq tryMiningLava ; there are no bricks to mine
+
+    lda GAMEMAP0,y
     and MAP_CLEAR_PATTERN_BY_X_SEG1,x
     sta GAMEMAP0,y
+    lda #SCORE_FOR_BRICK
+    sta TEMP_X_INDEX    ;the score
+
+tryMiningLava:
+    lda LAVA_SLEEP
+    beq exitMining ;lava is flowing
+
+    lda LAVAMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq exitMining ;there's nothing there
+
+    lda LAVAMAP0,y
+    and MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    sta LAVAMAP0,y
+    lda #SCORE_FOR_LAVA
+    sta TEMP_X_INDEX ;the score
+
+exitMining:
 
     rts
 ;-----------------------------
