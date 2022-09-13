@@ -19,9 +19,9 @@ MAX_PLAYER_LIVES                 = 7
 
 LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 8
-LAVA_SLEEP_AFTER_PRIZE           = 11
+LAVA_SLEEP_AFTER_PRIZE           = 9
 INITIAL_LAVA_DELAY               = 27
-MINIMUM_LAVA_DELAY               = 8
+MINIMUM_LAVA_DELAY               = 9
 MAX_LAVA_X                       = 11
 
 
@@ -913,7 +913,10 @@ hideDemPrize:
     lda #32                ;some other value than 255
     sta CURRENT_PRIZE_Y
     sta PRIZE_SOUND_INTERVAL
-    lda #LAVA_SLEEP_AFTER_PRIZE
+    lda ROOMS_COMPLETED
+    lsr
+    clc 
+    adc #LAVA_SLEEP_AFTER_PRIZE
     sta LAVA_SLEEP          ;freeze lava
     ;--
     lda SCORE_DIGITS_IDX+1
