@@ -1508,8 +1508,6 @@ exitAcceleration:
 ;Fix the lava postion after it was mined
 CorrectTheLavaPos:
 
-    ;lda #32
-    ;sta PRIZE_SOUND_INTERVAL
 
     lda LAVA_POS
     lsr
@@ -1520,6 +1518,23 @@ CorrectTheLavaPos:
     lda LAVA_POS
     and #$0F
     sta TEMPY
+    lda LAVA_DIR
+    and #$0F
+    sta TMPNUM1
+    lda LAVA_STUCK
+    and #$F0
+    sta LAVA_STUCK
+    
+    jmp moveThePosX
+changeLavaDir:
+    lda LAVA_DIR
+    and #$0F
+    cmp #0
+    beq increaseDir
+    dec LAVA_DIR
+    jmp moveThePosX
+increaseDir:
+    inc LAVA_DIR
 
 moveThePosX:
     stx TMPNUM
@@ -1528,12 +1543,12 @@ moveThePosX:
     cmp #0 ;0 - left; 1 - right
     bne movePositionRight
     dex
-    bmi revertMovement
+    bmi changeLavaDir
     jmp checkForBackLava
 movePositionRight:
     inx
     cpx #MAPWIDTH
-    bcs revertMovement
+    bcs changeLavaDir
 
 checkForBackLava:
     lda MAP_3CELLS_LOOKUP,x
@@ -1551,7 +1566,7 @@ thereWasNoLava:
     ;maybe there is a wall ?
     lda GAMEMAP0,y
     and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne revertMovement
+    bne changeLavaDir
 
 
     
@@ -1583,6 +1598,10 @@ exitLavaPosUpdate:
     and #$F0
     ora TEMPY
     sta LAVA_POS
+    lda LAVA_DIR
+    and #$F0
+    ora TMPNUM1
+    sta LAVA_DIR
     rts
 
 
