@@ -19,9 +19,9 @@ MAX_PLAYER_LIVES                 = 7
 
 LAVA_START_POS                   = $05 ; x=0; y=5
 INITIAL_LAVA_SLEEP               = 8
-LAVA_SLEEP_AFTER_PRIZE           = 9
-INITIAL_LAVA_DELAY               = 27
-MINIMUM_LAVA_DELAY               = 9
+LAVA_SLEEP_AFTER_PRIZE           = 10
+INITIAL_LAVA_DELAY               = 29
+MINIMUM_LAVA_DELAY               = 10
 MAX_LAVA_X                       = 11
 
 
@@ -39,7 +39,7 @@ LAVA_COLOR_AFTER                 = $14
 
 SCORE_FOR_PRIZE                  = 10
 SCORE_FOR_BRICK                  = 2
-SCORE_FOR_LAVA                   = 10
+SCORE_FOR_LAVA                   = 48
 MIN_DISTANCE_FROM_PRIZE          = 18
 
 DEATH_INTERVAL                   = 64
@@ -281,21 +281,6 @@ lastRowCheck:
     bcs ladderLoop
 
 compareToPrev:
-;    cmp TMPNUM1
-;    bcs XIsBiggerOrEqual        ; this X is bigger or equal
-
-;    lda TMPNUM1                 ; this X is smaller than previous
-;    stx TMPNUM1
-;    sec
-;    sbc TMPNUM1
-;    jmp compareResult
-;XIsBiggerOrEqual:
-;    sec
-;    sbc TMPNUM1
-
-;compareResult:
-;    cmp #MIN_X_DISTANCE_BETWEEN_LADDERS
-;    bcc ladderLoop                          ;the difference in X between two ladders in two adjacent levels is too small, do it again!
     cmp TMPNUM1
     beq ladderLoop
     stx TMPNUM1
@@ -884,6 +869,7 @@ doneDividing:
     ldy #0
     jsr IncrementScore
     jsr CheckScoreForBonuses
+
 
 doneMining:
 
@@ -1523,6 +1509,123 @@ reduce_delay:
     stx LAVA_DELAY
 exitAcceleration:
     rts
+;------------------------
+;Fix the lava postion after it was mined
+CorrectTheLavaPos:
+
+    ;lda #32
+    ;sta PRIZE_SOUND_INTERVAL
+
+    lda LAVA_POS
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+    lda LAVA_POS
+    and #$0F
+    sta TEMPY
+
+moveThePosX:
+    stx TMPNUM
+    lda LAVA_DIR
+    and #$0F
+    cmp #0 ;0 - left; 1 - right
+    bne movePositionRight
+    dex
+    bmi revertMovement
+    jmp checkForBackLava
+movePositionRight:
+    inx
+    cpx #MAPWIDTH
+    bcs revertMovement
+
+checkForBackLava:
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay ; store the cell offset in Y
+
+
+    lda LAVAMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq thereWasNoLava
+    jmp maybeTheLavaStuck
+
+thereWasNoLava: 
+    ;maybe there is a wall ?
+    lda GAMEMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne revertMovement
+
+
+    
+    ldy TEMPY
+    iny
+    cpy #MAPHEIGHT
+    bcs exitLavaPosUpdate
+    sty TEMP_X_INDEX
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMP_X_INDEX
+    tay ; store the cell offset in Y
+
+    lda LAVAMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq moveThePosX
+    jmp exitLavaPosUpdate
+
+
+maybeTheLavaStuck:
+
+    inx
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay
+
+    lda GAMEMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne revertMovement
+
+    dex
+
+    lda MAP_3CELLS_LOOKUP,x
+    clc
+    adc TEMPY
+    tay
+
+
+    lda GAMEMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne revertMovement
+
+    inc TEMPY
+
+    lda LAVAMAP0,y
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    beq exitLavaPosUpdate
+    
+    dec TEMPY
+    jmp exitLavaPosUpdate
+
+revertMovement:
+    ldx TMPNUM
+
+exitLavaPosUpdate:
+    txa
+    asl
+    asl
+    asl
+    asl
+    and #$F0
+    ora TEMPY
+    sta LAVA_POS
+    rts
+
+
 ;-------------------------
 LavaLogic:
 
@@ -1546,13 +1649,18 @@ LavaLogic:
 lavaSlumber:
     dex
     stx LAVA_SLEEP
+    cpx #0
+    beq fixLavaPos
+    jmp notFix
+fixLavaPos:
+    jsr CorrectTheLavaPos ; check if lava was disconnected from it's flow by the player
+notFix:
     ldy #0
     jmp lavaDelay
 
 
 moveTheLava:
     jsr AccelerateLava
-
     jsr FillInLavaTile
 ;----
     ;get the lava Y
