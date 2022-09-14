@@ -137,6 +137,8 @@ LADDERHEIGHT4           ds 1
 LADDERHEIGHT5           ds 1
     ORG LAVAMAP0
 CURRENT_LADDER_Y        ds 1
+    ORG LAVAMAP3
+LAVA_STUCK              ds 1
 
 ;------------------------------------------------------
 ;                  123 | 5 bytes free
@@ -1402,23 +1404,16 @@ CheckLowerGroundTile:
     sec
     sbc #1
     tay
-    
-    lda MAP_3CELLS_INTERSECTIONS,x
-    cmp #1
-    beq checkBelow_seg1
-    ;Let's change the second segment
 
-    lda GAMEMAP0,y + MAPHEIGHT  ; adding MAPHEIGHT helps to reach the next column
-    eor MAP_CLEAR_PATTERN_BY_X_SEG2,x
-    and MAP_FILL_PATTERN_BY_X_SEG2,x
-    beq mustLowerLava
-
-checkBelow_seg1:
     lda GAMEMAP0,y
-    eor MAP_CLEAR_PATTERN_BY_X_SEG1,x
+    and MAP_FILL_PATTERN_BY_X_SEG1,x
+    bne notlower
+
+    lda LAVAMAP0,y
     and MAP_FILL_PATTERN_BY_X_SEG1,x
     beq mustLowerLava
 
+notlower:
     lda #0
     jmp finishLowerGroundTileCheck
 
@@ -1550,7 +1545,7 @@ checkForBackLava:
     lda LAVAMAP0,y
     and MAP_FILL_PATTERN_BY_X_SEG1,x
     beq thereWasNoLava
-    jmp maybeTheLavaStuck
+    jmp exitLavaPosUpdate
 
 thereWasNoLava: 
     ;maybe there is a wall ?
@@ -1574,41 +1569,6 @@ thereWasNoLava:
     lda LAVAMAP0,y
     and MAP_FILL_PATTERN_BY_X_SEG1,x
     beq moveThePosX
-    jmp exitLavaPosUpdate
-
-
-maybeTheLavaStuck:
-
-    inx
-
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    tay
-
-    lda GAMEMAP0,y
-    and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne revertMovement
-
-    dex
-
-    lda MAP_3CELLS_LOOKUP,x
-    clc
-    adc TEMPY
-    tay
-
-
-    lda GAMEMAP0,y
-    and MAP_FILL_PATTERN_BY_X_SEG1,x
-    bne revertMovement
-
-    inc TEMPY
-
-    lda LAVAMAP0,y
-    and MAP_FILL_PATTERN_BY_X_SEG1,x
-    beq exitLavaPosUpdate
-    
-    dec TEMPY
     jmp exitLavaPosUpdate
 
 revertMovement:
@@ -1663,17 +1623,23 @@ moveTheLava:
     jsr AccelerateLava
     jsr FillInLavaTile
 ;----
+
+    lda LAVA_STUCK
+    and #$0F
+    cmp #2
+    bcs raiseLava
+
     ;get the lava Y
     lda LAVA_POS
     and #$0F
     sta TMPNUM  ;store it in TMPNUM
-
     cmp #0
     beq moveLavaHorizontaly ; lava is at 0 row
     jsr CheckLowerGroundTile
     cmp #1
     beq lowerLava
-;----
+
+    ;----
 moveLavaHorizontaly:
     ldy #0
 
@@ -1707,12 +1673,16 @@ storeLavaX:
 
 leftSideReached:
     dec LAVA_DIR
+    inc LAVA_STUCK
     jmp lavaDelay
 rightSideReached:
     ldy #0
     inc LAVA_DIR
+    inc LAVA_STUCK
     jmp lavaDelay
-
+raiseLava:
+    jsr LavaMovesUp
+    jmp lavaDelay
 lowerLava:
     jsr lavaMovesDown
 lavaDelay:
@@ -1734,10 +1704,34 @@ lavaMovesDown:
     and #$F0
     ora TMPNUM
     sta LAVA_POS
+    lda LAVA_STUCK  ; if lava can move down, it's not stuck
+    and #$F0
+    sta LAVA_STUCK
 
 exitLavaMoveDown:
-    rts
 
+    rts
+;--------------------------------------
+LavaMovesUp:
+    ldy #0
+    lda LAVA_POS
+    and #$0F
+    cmp #MAPHEIGHT-1
+    bcs exitLavaMovesUp
+    clc
+    adc #1
+    sta TMPNUM
+    lda LAVA_POS
+    and #$F0
+    ora TMPNUM
+    sta LAVA_POS
+
+    lda LAVA_STUCK
+    and #$F0
+    sta LAVA_STUCK
+
+exitLavaMovesUp:
+    rts
 ;--------------------------------------
 ;checks if there is ground tile on X
 ; A = 1 ir there is, 0 if not
