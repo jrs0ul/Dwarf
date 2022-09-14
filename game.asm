@@ -17,7 +17,8 @@ MAX_PLAYER_X                     = 140
 INITIAL_PLAYER_LIVES             = 3
 MAX_PLAYER_LIVES                 = 7
 
-LAVA_START_POS                   = $05 ; x=0; y=5
+LAVA_START_POS_LEFT              = $05 ; x=0; y=5
+LAVA_START_POS_RIGHT             = $B5
 INITIAL_LAVA_SLEEP               = 8
 LAVA_SLEEP_AFTER_PRIZE           = 10
 INITIAL_LAVA_DELAY               = 29
@@ -25,8 +26,9 @@ MINIMUM_LAVA_DELAY               = 10
 MAX_LAVA_X                       = 11
 
 
-;Main goal
-GOALX                            = 130
+;Main goals
+GOALX1                           = 2
+GOALX2                           = 130
 GOALY                            = 12
 
 ;Colors
@@ -135,10 +137,13 @@ LADDERHEIGHT2           ds 1
 LADDERHEIGHT3           ds 1
 LADDERHEIGHT4           ds 1
 LADDERHEIGHT5           ds 1
+
     ORG LAVAMAP0
 CURRENT_LADDER_Y        ds 1
+
     ORG LAVAMAP3
-LAVA_STUCK              ds 1
+LAVA_STUCK              ds 1 ;0 - lava is not stuck
+MAP_ORIENTATION         ds 1
 
 ;------------------------------------------------------
 ;                  123 | 5 bytes free
@@ -174,30 +179,43 @@ Main:
 ;--------------------------
 EnterNewMap:
     
-    ;lda ROOMS_COMPLETED
-    ;lsr
-    ;sta TMPNUM
+    lda ROOMS_COMPLETED
+    lsr
+    sta TMPNUM
     lda #INITIAL_LAVA_DELAY
-    cmp ROOMS_COMPLETED
+    cmp TMPNUM
     bcc SetMinimumDelay
     sec
-    sbc ROOMS_COMPLETED
+    sbc TMPNUM
     jmp storeLavaDelay
 SetMinimumDelay:
     lda #MINIMUM_LAVA_DELAY
 storeLavaDelay:
     sta LAVA_DELAY
 
+    lda MAP_ORIENTATION
+    and #$0F
+    sta TMPNUM
+
     ;set player coordinates
     lda #MAX_PLAYER_Y
     sta PLAYERY
     sta OLDPLAYERY
+
+    lda TMPNUM
+    beq heroOnLeft
+    lda #130
+    jmp storePlayerPos
+heroOnLeft:
     lda #3
+storePlayerPos:
     sta PLAYERX
     sta OLDPLAYERX
 
     lda #0
     sta LAVA_TIMER
+
+    lda TMPNUM
     sta LAVA_DIR
 
     lda #INITIAL_LAVA_SLEEP
@@ -206,7 +224,13 @@ storeLavaDelay:
     sta GENERATING
     sta TMPNUM1
 
-    lda #LAVA_START_POS
+    lda TMPNUM
+    beq PutLavaOnLeft
+    lda #LAVA_START_POS_RIGHT
+    jmp StoreLavaPosition
+PutLavaOnLeft:
+    lda #LAVA_START_POS_LEFT
+StoreLavaPosition:
     sta LAVA_POS
 
 
@@ -253,12 +277,21 @@ genloop:
     cpx #MAPHEIGHT
     bne genloop
 
+    lda TMPNUM
+    beq ClearMapOnLeft
+    ;Clearing map on right
+    ldx #5
+    lda #%00000001
+    sta GAMEMAP5,x
+    jmp startGenerateLadders
+ClearMapOnLeft:
     ldx #5
     lda #0
     sta GAMEMAP0,x
     lda #%00000111
     sta GAMEMAP1,x
 
+startGenerateLadders:
     lda #4                      ;inverted first y position
     sta TEMPY
     ;----------
@@ -281,6 +314,8 @@ compareLastRow:
 lastRowCheck:
     cmp #9                      ;don't let place ladders near the exit point
     bcs ladderLoop
+    cmp #2
+    bcc ladderLoop
 
 compareToPrev:
     cmp TMPNUM1
@@ -2065,6 +2100,22 @@ PlayPrizeSound:
     stx PRIZE_SOUND_INTERVAL
 exitPlayPrizeSound:
     rts
+;----------------------------------------------
+PlayDeathSound:
+    tax
+    dex
+    lda #8
+    sta AUDC1
+    lda #DEATH_INTERVAL
+    sec
+    sbc DEATH_SOUND_INTERVAL
+    lsr
+    sta AUDF1
+    lda #14
+    sta AUDV1
+
+    rts
+
 ;------------------------------------------------------
 VBlank:
     
@@ -2103,17 +2154,7 @@ there:
 
     lda DEATH_SOUND_INTERVAL
     beq noGameOver
-    tax
-    dex
-    lda #8
-    sta AUDC1
-    lda #DEATH_INTERVAL
-    sec
-    sbc DEATH_SOUND_INTERVAL
-    lsr
-    sta AUDF1
-    lda #14
-    sta AUDV1
+    jsr PlayDeathSound
 continueGameOver:
     cpx #0
     beq ResetThatGame
@@ -2164,8 +2205,20 @@ continueVBlank:
     jsr UpdateSpriteFrames
 
     lda PLAYERX
-    cmp #GOALX
+    cmp #GOALX1
+    bcs checkSecondGoal
+    lda MAP_ORIENTATION
+    and #$F0
+    ora #1
+    sta MAP_ORIENTATION
+    jmp checkGoalY
+checkSecondGoal:
+    cmp #GOALX2
     bcc notReached
+    lda MAP_ORIENTATION
+    and #$F0
+    sta MAP_ORIENTATION
+checkGoalY:
     lda PLAYERY
     cmp #GOALY
     bcs notReached
