@@ -776,61 +776,54 @@ emptyLoop:
 
     jsr DrawScore
 
-    ldx #23 ;remaining scanlines
+    ldx #21 ;remaining scanlines
 emptyLoop1:
     sta WSYNC
     dex
     bne emptyLoop1
 
     sta WSYNC
-    SLEEP 23;36
-    sta RESP0           ;3 39 reset sprite pos
-    sta RESP1           ;3 42
-    lda #%00010000
-    sta HMP1            ;3 45
-
-
-    lda SCORE_COLOR     ;2 47
-    sta COLUP1          ;3 50
-    sta COLUP0          ;3 53
-
-    sta WSYNC
     sta HMOVE               ;3 3
-    SLEEP 20                ;27 30
-    lda #%00000011          ;2 32
-    sta NUSIZ0              ;3 35
-    sta NUSIZ1              ;3 38
-    sta VDELP0              ;3 
-    sta VDELP1              ;3 
-    ldy #10                 ;2 40
-    sty TEMP_X_INDEX        ;3 43
-    sta HMCLR               ;3 46
+    lda #%00000011          ;2 35
+    sta NUSIZ0              ;3 38
+    sta NUSIZ1              ;3 41
+    sta VDELP0              ;3 44
+    sta VDELP1              ;3 47
+    ldy #12                 ;2 49
+    sty TEMP_X_INDEX        ;3 51
+    lda #$09
+    sta COLUP0
+    sta COLUP1
 
 bitmap_line_loop:
 
-    ldy TEMP_X_INDEX        ;3 52
-    lda CPR_1,y             ;4 50
-    sta GRP0                ;3 16
-    lda CPR_2,y             ;4 20 
-    sta GRP1                ;3 23
+    ldy TEMP_X_INDEX        ;3 57
+    lda CPR_6,y
+    sta TMPNUM
     sta WSYNC
-    sta HMOVE               ;3 3
-    lda CPR_3,y             ;4 27
-    sta GRP0                ;3 30
-    
-    lda CPR_6,y             ;4 56
-    sta TMPNUM              ;3 9
-    ldx CPR_5,y             ;4 13
-    lda CPR_4,y             ;4 34
-    ldy TMPNUM              ;3 37 
+    lda CPR_1,y             ;4 61
+    sta GRP0                ;3 64
+    nop
+    lda CPR_2,y             ;4 68
+    sta GRP1                ;3 71
 
-    sta GRP1                ;3 40
-    stx GRP0                ;3 43
-    sty GRP1                ;3 46 
-    sta GRP0                ;3 49
+    lda CPR_3,y             ;4 13
+    sta GRP0                ;3 16
 
-    dec TEMP_X_INDEX                     ;2 54
-    bpl bitmap_line_loop    ;2 56
+    nop
+    nop
+    nop
+    ldx CPR_5,y             ;4 27
+    lda CPR_4,y             ;4 31
+    ldy TMPNUM              ;3 34 
+
+    sta GRP1                ;3 37
+    stx GRP0                ;3 40
+    sty GRP1                ;3 43
+    sta GRP0                ;3 46
+
+    dec TEMP_X_INDEX        ;5 51
+    bpl bitmap_line_loop    ;2 53
 
     lda #0                  ;2
     sta VDELP0              ;3
@@ -2884,34 +2877,40 @@ LADDER_SPRITE_X_TO_CELL_X:
 CPR_1:
     .byte %00000000
     .byte %00000000
+    .byte %00000000
     .byte %00111110
-    .byte %01000001
+    .byte %01000000
+    .byte %10000000
     .byte %10001000
     .byte %10001100
     .byte %10001000
-    .byte %01000001
+    .byte %10000000
+    .byte %01000000
     .byte %00111110
-    .byte %00000000
     .byte %00000000
 CPR_2:
     .byte %00000000
+    .byte %11111111
     .byte %11101110
     .byte %11010110
     .byte %11010110
     .byte %10111010
     .byte %10111011
-    .byte %11000101
+    .byte %00000000
+    .byte %01000101
     .byte %01000101
     .byte %01010101
     .byte %01010101
     .byte %00101001
 CPR_3:
     .byte %00000000
+    .byte %11111111
     .byte %10101011
     .byte %00100111
     .byte %10101011
     .byte %10101011
     .byte %01110111
+    .byte %00000000
     .byte %10100010
     .byte %00100010
     .byte %10101010
@@ -2919,17 +2918,20 @@ CPR_3:
     .byte %10010100
 CPR_4:
     .byte %00000000
+    .byte %00000000
+    .byte %10000000
+    .byte %11000000
+    .byte %11100000
+    .byte %11110000
     .byte %11111000
-    .byte %11111000
-    .byte %11111000
-    .byte %11111000
-    .byte %11111000
-    .byte %11011100
+    .byte %00000000
+    .byte %11011000
     .byte %10010000
     .byte %11010000
     .byte %10010000
     .byte %11010000
 CPR_5:
+    .byte %00000000
     .byte %00000000
     .byte %00000000
     .byte %00000000
@@ -2941,7 +2943,9 @@ CPR_5:
     .byte %00100010
     .byte %00000000
     .byte %00000000
+    .byte %00000000
 CPR_6:
+    .byte %00000000
     .byte %00000000
     .byte %00000000
     .byte %00000000
@@ -2951,6 +2955,7 @@ CPR_6:
     .byte %00010001
     .byte %01010101
     .byte %00100010
+    .byte %00000000
     .byte %00000000
     .byte %00000000
 
