@@ -569,27 +569,6 @@ doneDrawing:
     jsr DrawScore
 
     sta WSYNC   ;let's draw an empty line
-    lda #0          ;2 2
-    sta GRP0        ;3 5
-    sta GRP1        ;3 8
-    sta GRP0        ;3 11
-    sta GRP1        ;3 14
-    sta HMCLR       ;3 17
-
-
-    lda #0          ;2 27
-
-    SLEEP 17
-
-    sta RESP0      ;2 reset sprite pos
-    sta RESP1      ;2 reset sprite pos
-
-    lda #%11110000 ;2 -1
-    sta HMP0       ;3  reset p1 x offset
-    lda #0         ;2
-    sta HMP1       ;3  reset p1 x offset
-
-    sta WSYNC   ;let's draw an empty line
     sta HMOVE       ;3 3
     lda PLAYER_LIVES
     and #$0F
