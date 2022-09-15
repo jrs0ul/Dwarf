@@ -338,8 +338,6 @@ saveLadderPostionToRam:
     sta LADDER1X,y              ;  store sprite position to ram variable
 
 
-   
-
 nextLadder:
     dec TEMPY
     bpl ladderLoop
@@ -778,11 +776,67 @@ emptyLoop:
 
     jsr DrawScore
 
-    ldx #36 ;remaining scanlines
+    ldx #23 ;remaining scanlines
 emptyLoop1:
     sta WSYNC
     dex
     bne emptyLoop1
+
+    sta WSYNC
+    SLEEP 23;36
+    sta RESP0           ;3 39 reset sprite pos
+    sta RESP1           ;3 42
+    lda #%00010000
+    sta HMP1            ;3 45
+
+
+    lda SCORE_COLOR     ;2 47
+    sta COLUP1          ;3 50
+    sta COLUP0          ;3 53
+
+    sta WSYNC
+    sta HMOVE               ;3 3
+    SLEEP 20                ;27 30
+    lda #%00000011          ;2 32
+    sta NUSIZ0              ;3 35
+    sta NUSIZ1              ;3 38
+    sta VDELP0              ;3 
+    sta VDELP1              ;3 
+    ldy #10                 ;2 40
+    sty TEMP_X_INDEX        ;3 43
+    sta HMCLR               ;3 46
+
+bitmap_line_loop:
+
+    ldy TEMP_X_INDEX        ;3 52
+    lda CPR_1,y             ;4 50
+    sta GRP0                ;3 16
+    lda CPR_2,y             ;4 20 
+    sta GRP1                ;3 23
+    sta WSYNC
+    sta HMOVE               ;3 3
+    lda CPR_3,y             ;4 27
+    sta GRP0                ;3 30
+    
+    lda CPR_6,y             ;4 56
+    sta TMPNUM              ;3 9
+    ldx CPR_5,y             ;4 13
+    lda CPR_4,y             ;4 34
+    ldy TMPNUM              ;3 37 
+
+    sta GRP1                ;3 40
+    stx GRP0                ;3 43
+    sty GRP1                ;3 46 
+    sta GRP0                ;3 49
+
+    dec TEMP_X_INDEX                     ;2 54
+    bpl bitmap_line_loop    ;2 56
+
+    lda #0                  ;2
+    sta VDELP0              ;3
+    sta VDELP1              ;3
+
+
 
 
     rts
@@ -2235,13 +2289,13 @@ exitVBlank:
     rts
 ;--------------------------------------------
     if (* & $FF)
-        echo "------", [$FBFA - *]d, "bytes free before End of code"
+        echo "------", [$FCF3 - *]d, "bytes free before End of code"
         align 256
     endif
 ;--------------------------------------------
 ;ROM constants
 
-    ORG $FBF4
+    ORG $FCF3
 ;--------------------------------------------
 DIGITS_PTR_LOW:
     .byte <(ZERO_GFX)
@@ -2552,7 +2606,7 @@ LIVES_LOOKUP:
     .byte 3 ;6 lives
     .byte 3 ;7 lives
 
-    ORG $FCF3 ; next data page
+    ORG $FDF2 ; next data page
 
 MAP_FILL_PATTERN_BY_X_SEG1:    ; lookup tables for filling lava in the lava map, they contains a pattern used with ORA
     .byte %10000000 ;0 first part
@@ -2632,7 +2686,7 @@ PRIZE_X_POSSITIONS:
     .byte 123
     .byte 135
 
-TITLE0
+TITLE0:
     .byte %10000000
     .byte %10000000
     .byte %10000000
@@ -2641,7 +2695,7 @@ TITLE0
     .byte %10000000
     .byte %10000000
     .byte %10000000
-TITLE1
+TITLE1:
     .byte %11100001
     .byte %00010010
     .byte %00001010
@@ -2650,7 +2704,7 @@ TITLE1
     .byte %00001010
     .byte %00010010
     .byte %11100010
-TITLE2
+TITLE2:
     .byte %10011001
     .byte %10100110
     .byte %10100110
@@ -2659,7 +2713,7 @@ TITLE2
     .byte %10100000
     .byte %10100000
     .byte %00100000
-TITLE3
+TITLE3:
     .byte %00000000
     .byte %00000000
     .byte %00000000
@@ -2668,7 +2722,7 @@ TITLE3
     .byte %00000000
     .byte %00000000
     .byte %11110000
-TITLE4
+TITLE4:
     .byte %10100010
     .byte %10100100
     .byte %10101000
@@ -2677,7 +2731,7 @@ TITLE4
     .byte %10100001
     .byte %10100001
     .byte %00111110
-TITLE5
+TITLE5:
     .byte %00000010
     .byte %00000010
     .byte %00000010
@@ -2687,7 +2741,7 @@ TITLE5
     .byte %00000010
     .byte %00011110
 
-LADDER_SPRITE_X_TO_CELL_X
+LADDER_SPRITE_X_TO_CELL_X:
     .byte 0;0
     .byte 0
     .byte 0
@@ -2822,28 +2876,89 @@ LADDER_SPRITE_X_TO_CELL_X
     .byte 0
     .byte 11
 
-LADDER_GFX_1:
+
+
+    ;245 bytes used of 256
+    ORG $FEFA ;next data page
+
+CPR_1:
     .byte %00000000
     .byte %00000000
-    .byte %00000000
-    .byte %00000000
-    .byte %00000010
-    .byte %00101110
-    .byte %01000010
     .byte %00111110
-    .byte %01000010
-    .byte %01101110
-    .byte %01000010
+    .byte %01000001
+    .byte %10001000
+    .byte %10001100
+    .byte %10001000
+    .byte %01000001
+    .byte %00111110
     .byte %00000000
-
-
-    ;87 bytes used of 256
+    .byte %00000000
+CPR_2:
+    .byte %00000000
+    .byte %11101110
+    .byte %11010110
+    .byte %11010110
+    .byte %10111010
+    .byte %10111011
+    .byte %11000101
+    .byte %01000101
+    .byte %01010101
+    .byte %01010101
+    .byte %00101001
+CPR_3:
+    .byte %00000000
+    .byte %10101011
+    .byte %00100111
+    .byte %10101011
+    .byte %10101011
+    .byte %01110111
+    .byte %10100010
+    .byte %00100010
+    .byte %10101010
+    .byte %00101010
+    .byte %10010100
+CPR_4:
+    .byte %00000000
+    .byte %11111000
+    .byte %11111000
+    .byte %11111000
+    .byte %11111000
+    .byte %11111000
+    .byte %11011100
+    .byte %10010000
+    .byte %11010000
+    .byte %10010000
+    .byte %11010000
+CPR_5:
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %01110010
+    .byte %01000101
+    .byte %00100101
+    .byte %00010101
+    .byte %01010101
+    .byte %00100010
+    .byte %00000000
+    .byte %00000000
+CPR_6:
+    .byte %00000000
+    .byte %00000000
+    .byte %00000000
+    .byte %01110111
+    .byte %01000100
+    .byte %00100010
+    .byte %00010001
+    .byte %01010101
+    .byte %00100010
+    .byte %00000000
+    .byte %00000000
 
 
     ;------------------------------------------
     if (* & $FF)
         echo "------", [$FFFA - *]d, "bytes free before End of data"
-        align 256
+        ;align 256
     endif
     ;------------------------------------------------------------------------------
     ;       Interrupt vectors
