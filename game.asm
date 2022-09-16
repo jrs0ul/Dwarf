@@ -867,6 +867,9 @@ Overscan:
     lda DEATH_SOUND_INTERVAL
     bne notColliding        ;if the character dies
 
+
+    jsr LadderCollision
+
     ;Let's check PLAYER-PLAYFIELD collision
     bit CXP0FB
     bpl notColliding
@@ -961,7 +964,7 @@ notColliding:
 
     bit CXM0P               ;player vs missile(prize)
     bvs hideDemPrize        ;the 6th bit is set
-    jmp checkLadderCollision
+    jmp OverscanLoop
 hideDemPrize:
     lda #32                ;some other value than 255
     sta CURRENT_PRIZE_Y
@@ -982,8 +985,7 @@ hideDemPrize:
     jsr IncrementScore
     jsr CheckScoreForBonuses
 
-checkLadderCollision:
-    jsr LadderCollision
+;checkLadderCollision:
 
 
 OverscanLoop:
@@ -1384,10 +1386,30 @@ setMinY:
 storeOldY:
     stx OLDPLAYERY
     sta PLAYERY
+    lda OLDPLAYER_FRAME
+    cmp #%00010000
+    beq movingDownAlready
     lda #%00010000  ; after 3 x lsr it will turn into 2(3rd frame - climbing)
     ldx PLAYER_FRAME
     stx OLDPLAYER_FRAME
     sta PLAYER_FRAME
+
+    ldx PLAYERX
+    stx OLDPLAYERX
+    lda PLAYER_FLIP
+    cmp #8
+    bne goDownWhenFacingRight
+    inx
+    inx
+    jmp wentDown
+goDownWhenFacingRight:
+    dex
+    dex
+wentDown:
+    stx PLAYERX
+
+movingDownAlready:
+
     jmp noInput
 checkButton:
 ;----------------------------------------------
