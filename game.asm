@@ -616,42 +616,44 @@ continueLives2:
 endofKernel:
 
     rts
+
 ;--------------------------------------------------------------
 DrawScore:
 
+   lda #0
+    sta GRP0
+    sta GRP1
+    sta REFP0           ;3  turn off mirroring
+    sta REFP1
+
+    lda #%00000011      ;2
+    sta NUSIZ0          ;3
+    sta NUSIZ1          ;3
+
+
     sta WSYNC           ;let's draw an empty line
-    lda #0              ;2 5
-    sta GRP0            ;3 8
-    sta GRP1            ;3 11
-    sta REFP0           ;3 14     turn off mirroring
-    sta REFP1           ;3 17
+    SLEEP 36
+    sta RESP0           ;2 reset sprite pos
+    sta RESP1
+
     sta HMCLR
-
-    SLEEP 17            ;17 34
-    lda #$11            ;2  36    move p2 sprite left a bit
-
-    ;had to push cpu cycles to 36 instead of 20 to center the score
-
-    sta RESP0           ;3 39 reset sprite pos
-    sta RESP1           ;3 42
-    sta HMP1            ;3 45
+    lda #$10           ;2  move p2 sprite left a bit
+    sta HMP1           ;3
 
 
-    lda SCORE_COLOR     ;2 47
-    sta COLUP1          ;3 50
-    sta COLUP0          ;3 53
+    lda SCORE_COLOR     ;2
+    sta COLUP1          ;3 
+    sta COLUP0          ;3 
 
     sta WSYNC
-    sta HMOVE               ;3 3
-    SLEEP 27                ;27 30
-    lda #%00000011          ;2 32
-    sta NUSIZ0              ;3 35
-    sta NUSIZ1              ;3 38
-    sta VDELP0              ;3 41
-    sta VDELP1              ;3 44
-    ldy PLAYERHEIGHT - 1    ;2 46
-    sty TEMP_X_INDEX        ;3 49
-    sta HMCLR               ;3 51
+    sta HMOVE
+    SLEEP 37
+    ldy #PLAYERHEIGHT - 1
+    sty TEMP_X_INDEX
+    lda #1
+    sta VDELP0              ;3
+    sta VDELP1              ;3
+
 
 score_line_loop:
 
@@ -659,7 +661,7 @@ score_line_loop:
     tax                     ;2 58
     lda (SCORE_PTR),y       ;5 63
     sta WSYNC
-    sta HMOVE               ;3 3
+    nop
     sty TEMP_X_INDEX        ;3 6
     sta TMPNUM              ;3 9
     lda (SCORE_PTR+10),y    ;5 14
@@ -684,6 +686,7 @@ score_line_loop:
     lda #0                  ;2
     sta VDELP0              ;3
     sta VDELP1              ;3
+    sta HMCLR
 
 
     rts
