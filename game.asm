@@ -640,22 +640,6 @@ DrawScore:
     lda #$10           ;2  move p2 sprite left a bit
     sta HMP1           ;3
 
-
-<<<<<<< HEAD
-    lda SCORE_COLOR     ;2
-    sta COLUP1          ;3 
-    sta COLUP0          ;3 
-
-    sta WSYNC
-    sta HMOVE
-    SLEEP 37
-    ldy #PLAYERHEIGHT - 1
-    sty TEMP_X_INDEX
-    lda #1
-    sta VDELP0              ;3
-    sta VDELP1              ;3
-
-=======
     lda #SCORE_COLOR     ;2 47
     sta COLUP1          ;3 50
     sta COLUP0          ;3 53
@@ -671,7 +655,6 @@ DrawScore:
     ldy #PLAYERHEIGHT - 1   ;2 46
     sty TEMP_X_INDEX        ;3 49
     sta HMCLR               ;3 51
->>>>>>> sega_md_gamepad_fix
 
 score_line_loop:
 
