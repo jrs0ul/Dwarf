@@ -2070,7 +2070,7 @@ TitleLogic
     sta SCORE_DIGITS_IDX+2
     sta ROOMS_COMPLETED
 
-    lda LAVA_COLOR_BEFORE
+    lda #LAVA_COLOR_BEFORE
     sta CURRENT_LAVA_COLOR
 
     jsr EnterNewMap
