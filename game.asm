@@ -38,6 +38,7 @@ LADDERS_COLOR                    = $C6
 GROUND_COLOR                     = $93
 LAVA_COLOR_BEFORE                = $34
 LAVA_COLOR_AFTER                 = $14
+LAVA_FROZEN_COLOR                = $9A
 
 SCORE_FOR_PRIZE                  = 10
 SCORE_FOR_BRICK                  = 2
@@ -1595,6 +1596,8 @@ exitAcceleration:
 ;Fix the lava postion after it was mined
 CorrectTheLavaPos:
 
+    lda #LAVA_COLOR_BEFORE
+    sta CURRENT_LAVA_COLOR
 
     lda LAVA_POS
     lsr
@@ -2100,6 +2103,13 @@ ResetTheGame:
 
 ;------------------------------------------------------
 AnimateLavaColor:
+    lda LAVA_SLEEP
+    bne setFrozenLava
+    jmp continueLavaAnim
+setFrozenLava:
+    ldx #LAVA_FROZEN_COLOR
+    jmp gameOverTimer
+continueLavaAnim:
     ldx CURRENT_LAVA_COLOR
     lda LAVA_TIMER
     lsr
@@ -2201,7 +2211,7 @@ there:
     beq notReached
     
     jsr PlayPrizeSound
-    
+   
     jsr AnimateLavaColor
 
     lda DEATH_SOUND_INTERVAL
