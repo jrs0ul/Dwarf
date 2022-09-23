@@ -621,7 +621,7 @@ endofKernel:
 ;--------------------------------------------------------------
 DrawScore:
 
-   lda #0
+    lda #0
     sta GRP0
     sta GRP1
     sta REFP0           ;3  turn off mirroring
