@@ -15,7 +15,7 @@ MIN_PLAYER_Y                     = 9
 MAX_PLAYER_Y                     = 54
 MAX_PLAYER_X                     = 140
 INITIAL_PLAYER_LIVES             = 3
-MAX_PLAYER_LIVES                 = 7
+MAX_PLAYER_LIVES                 = 8
 
 LAVA_START_POS_LEFT              = $05 ; x=0; y=5
 LAVA_START_POS_RIGHT             = $B5
